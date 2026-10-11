@@ -1,0 +1,129 @@
+{
+  "timestamp": "2026-10-11T22:25:17.573Z",
+  "runtime": "v24.21.0",
+  "checks": [
+    {
+      "name": "Explicit registered IPNS feed fetched, signed, pinned and ranked by separate process",
+      "outcome": "pass",
+      "durationMs": 47
+    },
+    {
+      "name": "Actual optional HTTP client verifies bound collector identity, freshness and signed snapshot",
+      "outcome": "pass",
+      "durationMs": 10
+    },
+    {
+      "name": "Full process exit and new PID preserves registry, sequence/hash cache, identity and metadata pin",
+      "outcome": "pass",
+      "durationMs": 2360
+    },
+    {
+      "name": "Real IPNS update with same application sequence and changed signed body rejected as equivocation",
+      "outcome": "pass",
+      "durationMs": 61
+    },
+    {
+      "name": "Real newer IPNS pointer to older signed sequence rejected after observed sequence two",
+      "outcome": "pass",
+      "durationMs": 90
+    },
+    {
+      "name": "Real signed stale feed via updated IPNS pointer rejected without replacing cached ranking",
+      "outcome": "pass",
+      "durationMs": 56
+    },
+    {
+      "name": "Oversized raw feed over actual Bitswap rejected before JSON parse and not persisted",
+      "outcome": "pass",
+      "durationMs": 1829
+    },
+    {
+      "name": "DAG fanout/depth and invalid CID rejected before any block request",
+      "outcome": "pass",
+      "durationMs": 1
+    },
+    {
+      "name": "Actual stored fanout and deep DAG IPNS feed pointers rejected before fetching any DAG blocks",
+      "outcome": "pass",
+      "durationMs": 61
+    },
+    {
+      "name": "Unavailable slow peer block has bounded retrieval timeout and stale previous snapshot",
+      "outcome": "pass",
+      "durationMs": 1828
+    },
+    {
+      "name": "Actual fragmented Bitswap frame from peer is timed out/reset",
+      "outcome": "pass",
+      "durationMs": 2303
+    },
+    {
+      "name": "Publisher offline plus collector process restart preserves signed previous snapshot as stale",
+      "outcome": "pass",
+      "durationMs": 3238
+    },
+    {
+      "name": "Recovered online publisher replaces stale cache with newer verified signed feed",
+      "outcome": "pass",
+      "durationMs": 64
+    },
+    {
+      "name": "Registration deduplicates and bounds feed count and malformed input",
+      "outcome": "pass",
+      "durationMs": 50
+    },
+    {
+      "name": "Feed envelope rejects excessive events and individual event bytes before state mutation",
+      "outcome": "pass",
+      "durationMs": 1
+    },
+    {
+      "name": "Actual HTTP rejects tamper, unknown signer, stale snapshot, count flood, resource URLs and streamed bytes",
+      "outcome": "pass",
+      "durationMs": 9
+    },
+    {
+      "name": "HTTP client accepts UnixFS DAG article reference without fetching its blocks",
+      "outcome": "pass",
+      "durationMs": 1
+    },
+    {
+      "name": "Registered feed crawl total time, bytes, and serial concurrency stay bounded",
+      "outcome": "pass",
+      "durationMs": 102
+    },
+    {
+      "name": "Concurrent poll requests are rejected and do not double crawl",
+      "outcome": "pass",
+      "durationMs": 38
+    }
+  ],
+  "limits": {
+    "feeds": 4,
+    "events": 100,
+    "feedBytes": 65536,
+    "eventBytes": 8192,
+    "totalBytes": 262144,
+    "feedTimeoutMs": 1800,
+    "pollTimeoutMs": 6000,
+    "concurrency": 1,
+    "snapshotBytes": 65536,
+    "snapshotArticles": 100,
+    "freshnessMs": 86400000
+  },
+  "firstPid": 88924,
+  "restartedPid": 89715,
+  "transport": "Real localhost Helia TCP/Noise/Yamux/Bitswap plus IPNS/private DHT; collector lives in separately restarted process",
+  "wireLimit": {
+    "incomingMessageBytes": 67584,
+    "decoder": "Bitswap network uses length-prefixed maxDataLength before protobuf decode"
+  },
+  "persistence": "Filesystem blockstore, filesystem datastore for pins/IPNS, atomic JSON registry/high-water/bodyhash/cache/snapshot/Ed25519 signing identity",
+  "unverified": [
+    "Public browser network",
+    "Sybil resistance",
+    "DHT global disappearance",
+    "Power loss and untargeted native-datastore interruption points",
+    "Filesystem allocated-block/directory overhead (strict file payload quotas tested separately)"
+  ]
+}

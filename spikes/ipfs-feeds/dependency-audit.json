@@ -1,0 +1,322 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@helia/bitswap": {
+      "name": "@helia/bitswap",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@helia/libp2p"
+      ],
+      "effects": [
+        "helia"
+      ],
+      "range": ">=4.0.0-3a1dd561",
+      "nodes": [
+        "node_modules/@helia/bitswap"
+      ],
+      "fixAvailable": {
+        "name": "@helia/bitswap",
+        "version": "3.2.3",
+        "isSemVerMajor": true
+      }
+    },
+    "@helia/libp2p": {
+      "name": "@helia/libp2p",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@ipshipyard/libp2p-auto-tls"
+      ],
+      "effects": [
+        "@helia/bitswap",
+        "helia"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@helia/libp2p"
+      ],
+      "fixAvailable": {
+        "name": "helia",
+        "version": "6.1.4",
+        "isSemVerMajor": true
+      }
+    },
+    "@ipshipyard/libp2p-auto-tls": {
+      "name": "@ipshipyard/libp2p-auto-tls",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "acme-client"
+      ],
+      "effects": [
+        "@helia/libp2p"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@ipshipyard/libp2p-auto-tls"
+      ],
+      "fixAvailable": {
+        "name": "helia",
+        "version": "6.1.4",
+        "isSemVerMajor": true
+      }
+    },
+    "@react-native/community-cli-plugin": {
+      "name": "@react-native/community-cli-plugin",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "metro"
+      ],
+      "effects": [
+        "react-native"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@react-native/community-cli-plugin"
+      ],
+      "fixAvailable": true
+    },
+    "@react-native/virtualized-lists": {
+      "name": "@react-native/virtualized-lists",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "react-native"
+      ],
+      "effects": [
+        "react-native"
+      ],
+      "range": ">=0.85.0-nightly-20260108-1236b6be4",
+      "nodes": [
+        "node_modules/@react-native/virtualized-lists"
+      ],
+      "fixAvailable": true
+    },
+    "acme-client": {
+      "name": "acme-client",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "node-forge"
+      ],
+      "effects": [
+        "@ipshipyard/libp2p-auto-tls"
+      ],
+      "range": ">=2.2.0",
+      "nodes": [
+        "node_modules/acme-client"
+      ],
+      "fixAvailable": {
+        "name": "helia",
+        "version": "6.1.4",
+        "isSemVerMajor": true
+      }
+    },
+    "braces": {
+      "name": "braces",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1240992,
+          "name": "braces",
+          "dependency": "braces",
+          "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+          "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+          "severity": "high",
+          "cwe": [
+            "CWE-674"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=3.0.3"
+        }
+      ],
+      "effects": [
+        "micromatch"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/braces"
+      ],
+      "fixAvailable": true
+    },
+    "helia": {
+      "name": "helia",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@helia/bitswap",
+        "@helia/libp2p"
+      ],
+      "effects": [],
+      "range": ">=7.0.0-3a1dd561",
+      "nodes": [
+        "node_modules/helia"
+      ],
+      "fixAvailable": {
+        "name": "helia",
+        "version": "6.1.4",
+        "isSemVerMajor": true
+      }
+    },
+    "metro": {
+      "name": "metro",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "metro-config",
+        "metro-file-map",
+        "metro-transform-worker"
+      ],
+      "effects": [
+        "@react-native/community-cli-plugin",
+        "metro-config",
+        "metro-transform-worker"
+      ],
+      "range": ">=0.71.0",
+      "nodes": [
+        "node_modules/metro"
+      ],
+      "fixAvailable": true
+    },
+    "metro-config": {
+      "name": "metro-config",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "metro"
+      ],
+      "effects": [
+        "metro"
+      ],
+      "range": ">=0.71.0",
+      "nodes": [
+        "node_modules/metro-config"
+      ],
+      "fixAvailable": true
+    },
+    "metro-file-map": {
+      "name": "metro-file-map",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "micromatch"
+      ],
+      "effects": [
+        "metro"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/metro-file-map"
+      ],
+      "fixAvailable": true
+    },
+    "metro-transform-worker": {
+      "name": "metro-transform-worker",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "metro"
+      ],
+      "effects": [
+        "metro"
+      ],
+      "range": ">=0.71.0",
+      "nodes": [
+        "node_modules/metro-transform-worker"
+      ],
+      "fixAvailable": true
+    },
+    "micromatch": {
+      "name": "micromatch",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "braces"
+      ],
+      "effects": [
+        "metro-file-map"
+      ],
+      "range": ">=0.2.0",
+      "nodes": [
+        "node_modules/micromatch"
+      ],
+      "fixAvailable": true
+    },
+    "node-forge": {
+      "name": "node-forge",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1240912,
+          "name": "node-forge",
+          "dependency": "node-forge",
+          "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+          "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+          "severity": "high",
+          "cwe": [
+            "CWE-347"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<=1.4.0"
+        }
+      ],
+      "effects": [
+        "acme-client"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/node-forge"
+      ],
+      "fixAvailable": {
+        "name": "helia",
+        "version": "6.1.4",
+        "isSemVerMajor": true
+      }
+    },
+    "react-native": {
+      "name": "react-native",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@react-native/community-cli-plugin",
+        "@react-native/virtualized-lists"
+      ],
+      "effects": [
+        "@react-native/virtualized-lists"
+      ],
+      "range": ">=0.73.0-nightly-20230506-1af868c52",
+      "nodes": [
+        "node_modules/react-native"
+      ],
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 15,
+      "critical": 0,
+      "total": 15
+    },
+    "dependencies": {
+      "prod": 267,
+      "dev": 0,
+      "optional": 9,
+      "peer": 221,
+      "peerOptional": 0,
+      "total": 496
+    }
+  }
+}

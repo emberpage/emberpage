@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "MeshCache IPFS spike (isolated)",
+  "version": "0.0.1",
+  "permissions": ["offscreen"],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'none'; connect-src ws://127.0.0.1:4329;"}
+}

@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-11T22:21:23.607Z",
+  "scope": "Independent public IPFS Check backend retrieves a synthetic block from a NATed browser through a disposable outbound Cloudflare WSS tunnel and capped libp2p circuit relay.",
+  "checks": [
+    {
+      "name": "Disposable outbound tunnel created",
+      "outcome": "pass",
+      "durationMs": 3633,
+      "data": "condition-richmond-quarterly-iso.trycloudflare.com"
+    },
+    {
+      "name": "Public tunnel DNS and upstream are ready",
+      "outcome": "fail",
+      "durationMs": 8089,
+      "error": "Public tunnel readiness failed"
+    }
+  ],
+  "readiness": [
+    {
+      "error": "fetch failed",
+      "cause": "getaddrinfo ENOTFOUND condition-richmond-quarterly-iso.trycloudflare.com"
+    },
+    {
+      "error": "fetch failed",
+      "cause": "getaddrinfo ENOTFOUND condition-richmond-quarterly-iso.trycloudflare.com"
+    },
+    {
+      "error": "fetch failed",
+      "cause": "getaddrinfo ENOTFOUND condition-richmond-quarterly-iso.trycloudflare.com"
+    },
+    {
+      "error": "fetch failed",
+      "cause": "getaddrinfo ENOTFOUND condition-richmond-quarterly-iso.trycloudflare.com"
+    },
+    {
+      "error": "fetch failed",
+      "cause": "getaddrinfo ENOTFOUND condition-richmond-quarterly-iso.trycloudflare.com"
+    },
+    {
+      "error": "fetch failed",
+      "cause": "getaddrinfo ENOTFOUND condition-richmond-quarterly-iso.trycloudflare.com"
+    },
+    {
+      "error": "fetch failed",
+      "cause": "getaddrinfo ENOTFOUND condition-richmond-quarterly-iso.trycloudflare.com"
+    },
+    {
+      "error": "fetch failed",
+      "cause": "getaddrinfo ENOTFOUND condition-richmond-quarterly-iso.trycloudflare.com"
+    }
+  ],
+  "ok": false,
+  "error": "Error: Public tunnel readiness failed\n    at file:///local/user/Developer/meshcache/spikes/ipfs-public/external-check.mjs:37:555\n    at async check (file:///local/user/Developer/meshcache/spikes/ipfs-public/external-check.mjs:19:75)\n    at async file:///local/user/Developer/meshcache/spikes/ipfs-public/external-check.mjs:37:2",
+  "cleanup": "Own browser profiles, relay, HTTP server, and outbound tunnel stopped. No router or production service configuration changed."
+}

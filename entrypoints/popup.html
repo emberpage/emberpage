@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MeshCache</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="popup">
+    <header class="brand">
+      <span class="logo" aria-hidden="true">m</span><strong>MeshCache</strong>
+    </header>
+    <main>
+      <section id="welcome" hidden>
+        <h1>Save and read articles</h1>
+        <p>Keep articles on this device, or share a copy with readers.</p>
+        <details>
+          <summary>Sharing and privacy</summary>
+          <p class="note">
+            Sharing makes the copy, title, and link public. Share only content
+            you have permission to distribute. Network providers can see your
+            IP.
+          </p>
+        </details>
+        <button id="accept" class="primary full">Get started</button>
+      </section>
+      <section id="app" hidden>
+        <nav class="tabs" aria-label="Sections">
+          <button data-view="read" aria-current="page">Popular</button
+          ><button data-view="cache">Cache</button
+          ><button data-view="library">Saved</button>
+        </nav>
+        <section id="read-view">
+          <h1>Popular articles</h1>
+          <button id="browse" class="primary full">
+            Browse popular articles
+          </button>
+          <div id="catalog-list" class="item-list"></div>
+          <details>
+            <summary>About community copies</summary>
+            <p class="quiet">
+              Formatting checks and ratings do not verify accuracy.
+            </p>
+          </details>
+        </section>
+        <section id="cache-view" hidden>
+          <div class="page-summary">
+            <span id="domain" class="domain">Current page</span>
+            <h1 id="page-title">Open an article to start.</h1>
+          </div>
+          <button id="capture" class="primary full">
+            Preview this article
+          </button>
+        </section>
+        <section id="library-view" hidden>
+          <div class="section-title">
+            <h1>Saved articles</h1>
+            <span id="saved-count"></span>
+          </div>
+          <div id="library-list" class="item-list"></div>
+          <details>
+            <summary>Cache storage</summary>
+            <p class="quiet">
+              When the cache fills, the least recently read copies are removed.
+            </p>
+          </details>
+          <button id="clear" class="text-button danger" hidden>
+            Clear local copies
+          </button>
+        </section>
+      </section>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </main>
+    <script type="module" src="/src/popup.js"></script>
+  </body>
+</html>

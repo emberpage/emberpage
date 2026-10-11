@@ -1,0 +1,126 @@
+{
+  "at": "2026-10-11T21:55:38.861Z",
+  "scope": "Isolated MV3 extensions on one host, explicit local relay addresses, no public discovery.",
+  "steps": [
+    {
+      "name": "A pinned in MV3 offscreen IndexedDB",
+      "at": "2026-10-11T21:55:40.496Z",
+      "detail": {
+        "cid": "bafkreieywe5hmj6ik67swzprw6blp7ulbxt3sg7aumbjoia3blfyigbjwm",
+        "bytes": 600000,
+        "hash": "98b13a7627c857bf2b65f1b782b7fe8b0de7b91be0a30297201b0acb841829b3",
+        "info": {
+          "rtc": [],
+          "peerId": "12D3KooWFJysDcvtGwyhazqU2Yr7PrELd8BVcMKGwYyoqQNxAcj7",
+          "addresses": [
+            "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd/p2p-circuit/p2p/12D3KooWFJysDcvtGwyhazqU2Yr7PrELd8BVcMKGwYyoqQNxAcj7",
+            "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd/p2p-circuit/webrtc/p2p/12D3KooWFJysDcvtGwyhazqU2Yr7PrELd8BVcMKGwYyoqQNxAcj7"
+          ],
+          "connections": [
+            {
+              "peer": "12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd",
+              "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd"
+            }
+          ],
+          "pins": [
+            "bafkreieywe5hmj6ik67swzprw6blp7ulbxt3sg7aumbjoia3blfyigbjwm"
+          ],
+          "events": [
+            {
+              "at": "2026-10-11T21:55:39.400Z",
+              "type": "ready",
+              "detail": true
+            },
+            {
+              "at": "2026-10-11T21:55:39.449Z",
+              "type": "start",
+              "detail": "12D3KooWFJysDcvtGwyhazqU2Yr7PrELd8BVcMKGwYyoqQNxAcj7"
+            },
+            {
+              "at": "2026-10-11T21:55:40.489Z",
+              "type": "add",
+              "detail": "bafkreieywe5hmj6ik67swzprw6blp7ulbxt3sg7aumbjoia3blfyigbjwm"
+            },
+            {
+              "at": "2026-10-11T21:55:40.494Z",
+              "type": "pin",
+              "detail": "bafkreieywe5hmj6ik67swzprw6blp7ulbxt3sg7aumbjoia3blfyigbjwm"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "B fetched and pinned from A offscreen",
+      "at": "2026-10-11T21:55:41.197Z",
+      "detail": {
+        "rtc": [],
+        "peerId": "12D3KooWRoyXyAunw2ztF7BN5o9NjiWAnGixDYKbHvLLgG9TvXiH",
+        "addresses": [
+          "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd/p2p-circuit/p2p/12D3KooWRoyXyAunw2ztF7BN5o9NjiWAnGixDYKbHvLLgG9TvXiH",
+          "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd/p2p-circuit/webrtc/p2p/12D3KooWRoyXyAunw2ztF7BN5o9NjiWAnGixDYKbHvLLgG9TvXiH"
+        ],
+        "connections": [
+          {
+            "peer": "12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd",
+            "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd"
+          },
+          {
+            "peer": "12D3KooWFJysDcvtGwyhazqU2Yr7PrELd8BVcMKGwYyoqQNxAcj7",
+            "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd/p2p-circuit/webrtc/p2p/12D3KooWFJysDcvtGwyhazqU2Yr7PrELd8BVcMKGwYyoqQNxAcj7"
+          }
+        ],
+        "pins": [
+          "bafkreieywe5hmj6ik67swzprw6blp7ulbxt3sg7aumbjoia3blfyigbjwm"
+        ],
+        "events": [
+          {
+            "at": "2026-10-11T21:55:41.014Z",
+            "type": "ready",
+            "detail": true
+          },
+          {
+            "at": "2026-10-11T21:55:41.061Z",
+            "type": "start",
+            "detail": "12D3KooWRoyXyAunw2ztF7BN5o9NjiWAnGixDYKbHvLLgG9TvXiH"
+          },
+          {
+            "at": "2026-10-11T21:55:41.162Z",
+            "type": "dial",
+            "detail": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd/p2p-circuit/webrtc/p2p/12D3KooWFJysDcvtGwyhazqU2Yr7PrELd8BVcMKGwYyoqQNxAcj7"
+          },
+          {
+            "at": "2026-10-11T21:55:41.186Z",
+            "type": "bitswap:block",
+            "detail": {
+              "cid": "bafkreieywe5hmj6ik67swzprw6blp7ulbxt3sg7aumbjoia3blfyigbjwm",
+              "sender": "12D3KooWFJysDcvtGwyhazqU2Yr7PrELd8BVcMKGwYyoqQNxAcj7"
+            }
+          },
+          {
+            "at": "2026-10-11T21:55:41.190Z",
+            "type": "get",
+            "detail": {
+              "cid": "bafkreieywe5hmj6ik67swzprw6blp7ulbxt3sg7aumbjoia3blfyigbjwm",
+              "bytes": 600000,
+              "hash": "98b13a7627c857bf2b65f1b782b7fe8b0de7b91be0a30297201b0acb841829b3"
+            }
+          },
+          {
+            "at": "2026-10-11T21:55:41.195Z",
+            "type": "pin",
+            "detail": "bafkreieywe5hmj6ik67swzprw6blp7ulbxt3sg7aumbjoia3blfyigbjwm"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Stopped B service worker through Chrome DevTools",
+      "at": "2026-10-11T21:55:41.262Z",
+      "detail": true
+    }
+  ],
+  "errors": [],
+  "ok": false,
+  "error": "page.evaluate: Error: Some configured addresses failed to be listened on, you may need to remove one or more listen addresses from your configuration or set `transportManager.faultTolerance` to NO_FATAL:\n\n  /ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWBzxQ5FdTsgHKj3VQBDiwu7MmQwmGDJxP93NjBMRnFnbd/p2p-circuit: Error: reservation failed with status RESERVATION_REFUSED\n      at #t (chrome-extension://bbpakpnpmnfffgiceckjdaebnpiepmhg/browser.js:30:56263)\n      at async reserveQueue.add.peerId [as fn] (chrome-extension://bbpakpnpmnfffgiceckjdaebnpiepmhg/browser.js:30:53572)\n      at async Pm.run (chrome-extension://bbpakpnpmnfffgiceckjdaebnpiepmhg/browser.js:1:124106)\n\n    at window.callNode (chrome-extension://bbpakpnpmnfffgiceckjdaebnpiepmhg/control.js:4:26)\n    at async <anonymous>:396:30\n    at call (/local/user/Developer/meshcache/spikes/ipfs-mv3/drive.mjs:28:42)\n    at open (/local/user/Developer/meshcache/spikes/ipfs-mv3/drive.mjs:29:9)\n    at async file:///local/user/Developer/meshcache/spikes/ipfs-mv3/drive.mjs:60:13"
+}

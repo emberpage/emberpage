@@ -1,0 +1,149 @@
+{
+  "startedAt": "2026-10-11T09:54:47.788Z",
+  "runtime": "Disposable Chrome MV3 extension page",
+  "operations": [
+    {
+      "name": "upload",
+      "ok": true,
+      "elapsedMs": 554,
+      "data": {
+        "blobHash": "6083ea63d68632e2e83c038061031f6d47dd694208a788be78fdbbe177493ee5",
+        "size": 9564,
+        "provider": "https://blossom.primal.net"
+      }
+    },
+    {
+      "name": "listingAck",
+      "ok": true,
+      "elapsedMs": 738,
+      "data": {
+        "id": "a94142c408ae9ac829949d117d0c32bb87c47e6f83d1c2dda438c3f5a4554a5e",
+        "pubkey": "a244177c1f033a94b7296b99273c31a941db28dee9bd9c068ba65433cda48aea",
+        "createdAt": 1791712489000,
+        "url": "https://example.com/meshcache-first-release/b4220dbd-4ce2-4e61-921c-0ee954c04d8b",
+        "urlHash": "6ea6b652841a9c49871cc890809a072c4b22add2efc5f91f60c6b020bdcda2f2",
+        "contentHash": "f65710a176ae46eeb3ee1ce9af3d41dc7f6192eaf6d3f27dc5ef9da9b65d8c9e",
+        "blobHash": "6083ea63d68632e2e83c038061031f6d47dd694208a788be78fdbbe177493ee5",
+        "size": 9564,
+        "title": "Synthetic MeshCache verification b4220dbd-4ce2-4e61-921c-0ee954c04d8b",
+        "byline": "MeshCache test fixture",
+        "capturedAt": 1791712488510,
+        "provider": "https://blossom.primal.net"
+      }
+    },
+    {
+      "name": "freshExactListing",
+      "ok": true,
+      "elapsedMs": 763,
+      "data": {
+        "id": "a94142c408ae9ac829949d117d0c32bb87c47e6f83d1c2dda438c3f5a4554a5e",
+        "pubkey": "a244177c1f033a94b7296b99273c31a941db28dee9bd9c068ba65433cda48aea",
+        "createdAt": 1791712489000,
+        "url": "https://example.com/meshcache-first-release/b4220dbd-4ce2-4e61-921c-0ee954c04d8b",
+        "urlHash": "6ea6b652841a9c49871cc890809a072c4b22add2efc5f91f60c6b020bdcda2f2",
+        "contentHash": "f65710a176ae46eeb3ee1ce9af3d41dc7f6192eaf6d3f27dc5ef9da9b65d8c9e",
+        "blobHash": "6083ea63d68632e2e83c038061031f6d47dd694208a788be78fdbbe177493ee5",
+        "size": 9564,
+        "title": "Synthetic MeshCache verification b4220dbd-4ce2-4e61-921c-0ee954c04d8b",
+        "byline": "MeshCache test fixture",
+        "capturedAt": 1791712488510,
+        "provider": "https://blossom.primal.net"
+      }
+    },
+    {
+      "name": "freshReader",
+      "ok": true,
+      "elapsedMs": 548,
+      "data": {
+        "size": 9564,
+        "blobHash": "6083ea63d68632e2e83c038061031f6d47dd694208a788be78fdbbe177493ee5",
+        "contentHash": "f65710a176ae46eeb3ee1ce9af3d41dc7f6192eaf6d3f27dc5ef9da9b65d8c9e",
+        "eligible": true,
+        "images": 1,
+        "allImagesInline": true
+      }
+    },
+    {
+      "name": "ratingAck",
+      "ok": true,
+      "elapsedMs": 753,
+      "data": {
+        "id": "654c4d2d5f49d05dc3fba454b57ddeb630411758f65c337e9893c896baedad72",
+        "pubkey": "a244177c1f033a94b7296b99273c31a941db28dee9bd9c068ba65433cda48aea",
+        "createdAt": 1791712491000,
+        "urlHash": "6ea6b652841a9c49871cc890809a072c4b22add2efc5f91f60c6b020bdcda2f2",
+        "contentHash": "f65710a176ae46eeb3ee1ce9af3d41dc7f6192eaf6d3f27dc5ef9da9b65d8c9e",
+        "value": 1
+      }
+    },
+    {
+      "name": "indexedDiscovery",
+      "ok": true,
+      "elapsedMs": 1532,
+      "data": {
+        "listingPresent": true,
+        "validListings": 1,
+        "votes": [
+          {
+            "id": "654c4d2d5f49d05dc3fba454b57ddeb630411758f65c337e9893c896baedad72",
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "cleanup",
+      "ok": true,
+      "elapsedMs": 20762,
+      "data": {
+        "deletionAck": {
+          "accepted": true
+        },
+        "deleteError": "signal is aborted without reason"
+      }
+    },
+    {
+      "name": "cleanupObserved",
+      "ok": true,
+      "elapsedMs": 1076,
+      "data": {
+        "cdn": {
+          "status": 404,
+          "type": "basic"
+        },
+        "canonical": {
+          "status": 0,
+          "type": "opaqueredirect"
+        },
+        "relayRemaining": []
+      }
+    },
+    {
+      "name": "canonicalCleanupReconciliation",
+      "ok": true,
+      "data": {
+        "status": 302,
+        "locationMatchesQualifiedCDN": false
+      }
+    },
+    {
+      "name": "canonicalRedirectTargetCleanup",
+      "ok": true,
+      "data": {
+        "host": "r2a.primal.net",
+        "expectedHashPath": true,
+        "status": 404
+      }
+    }
+  ],
+  "fixture": {
+    "runId": "b4220dbd-4ce2-4e61-921c-0ee954c04d8b",
+    "blobHash": "6083ea63d68632e2e83c038061031f6d47dd694208a788be78fdbbe177493ee5",
+    "contentHash": "f65710a176ae46eeb3ee1ce9af3d41dc7f6192eaf6d3f27dc5ef9da9b65d8c9e",
+    "urlHash": "6ea6b652841a9c49871cc890809a072c4b22add2efc5f91f60c6b020bdcda2f2",
+    "size": 9564
+  },
+  "cleanupJournalRetained": false,
+  "finishedAt": "2026-10-11T09:55:15.386Z",
+  "cleanupJournalRemoved": true
+}

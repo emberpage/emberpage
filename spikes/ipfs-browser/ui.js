@@ -1,0 +1,8 @@
+import './browser.js';
+const $ = id => document.getElementById(id);
+const act = (id, operation) => $(id).addEventListener('click', async () => { try { $('status').textContent = 'Working…'; const result = await operation(); $('status').textContent = result || 'Done'; } catch (err) { $('status').textContent = `${err.name}: ${err.message}`; } });
+act('start', async () => { const { relay } = await (await fetch('/relay.json')).json(); const info = await window.spike.start($('label').value, relay); $('address').value = info.addresses.find(a => a.includes('/webrtc')); return `Node ready: ${info.peerId}`; });
+act('publish', async () => { const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32; const ctx = canvas.getContext('2d'); ctx.fillStyle = '#007aff'; ctx.fillRect(0, 0, 32, 32); const article = { title: 'Original synthetic field notebook', content: 'The network transfers this deliberately synthetic article between independent browser holders. '.repeat(5400), image: canvas.toDataURL('image/webp', 0.8) }; $('cid').value = await window.spike.add(Array.from(new TextEncoder().encode(JSON.stringify(article)))); await window.spike.pin($('cid').value); return 'Published and pinned locally. Copy the address and CID to another node.'; });
+act('fetch', async () => { await window.spike.dial($('address').value); const result = await window.spike.get($('cid').value); return `Verified ${result.bytes} bytes; SHA256 ${result.hash}`; });
+act('pin', async () => { await window.spike.pin($('cid').value); return 'Pinned in IndexedDB'; });
+act('stop', async () => { await window.spike.stop(); return 'Stopped serving'; });

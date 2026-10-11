@@ -1,0 +1,18 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "types": ["chrome", "node"]
+  },
+  "include": [
+    "wxt.config.ts",
+    "entrypoints/**/*.ts",
+    "src/**/*.ts",
+    "aggregator/**/*.ts",
+    ".wxt/wxt.d.ts"
+  ],
+  "exclude": ["node_modules", ".output", "spikes", "artifacts"]
+}

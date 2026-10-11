@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Review article · MeshCache</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="document">
+    <header class="brand">
+      <span class="logo" aria-hidden="true">m</span><strong>MeshCache</strong
+      ><span class="local-label">Article preview</span>
+    </header>
+    <main>
+      <section class="review-banner" id="review-controls">
+        <h2>Cache this article</h2>
+        <p>
+          Cache for readers makes this copy, its title, and its link public.
+          Share only content you have permission to distribute.
+        </p>
+        <details>
+          <summary>Before sharing</summary>
+          <p>
+            Check the preview for personal information. Network providers can
+            see your IP.
+          </p>
+        </details>
+        <label class="text-choice"
+          ><input id="text-only" type="checkbox" disabled />Text only (removes
+          images and formatting)</label
+        >
+        <div class="actions">
+          <button id="save" class="primary" disabled>Cache only for me</button
+          ><button id="share" class="secondary" disabled>
+            Cache for readers</button
+          ><button id="discard" disabled>Discard</button>
+        </div>
+      </section>
+      <p id="status" class="status" role="status" aria-live="polite">
+        Loading preview…
+      </p>
+      <h1 id="title"></h1>
+      <div id="meta" class="meta"></div>
+      <article id="article" class="article"></article>
+    </main>
+    <script type="module" src="/src/review.js"></script>
+  </body>
+</html>

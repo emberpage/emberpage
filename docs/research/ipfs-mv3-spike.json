@@ -1,0 +1,407 @@
+{
+  "at": "2026-10-11T22:22:59.139Z",
+  "scope": "Isolated MV3 extensions on one host, explicit local relay addresses, no public discovery.",
+  "steps": [
+    {
+      "name": "A pinned in MV3 offscreen IndexedDB",
+      "at": "2026-10-11T22:23:01.043Z",
+      "detail": {
+        "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+        "bytes": 600000,
+        "hash": "a91ac4210af1cc07153370d86b9079fd111dd94e6e3941d1a8c8cc1868b5c3f7",
+        "info": {
+          "policy": {
+            "public": {
+              "records": [
+                {
+                  "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+                  "bytes": 600000,
+                  "fileBytes": 600000,
+                  "blocks": [
+                    "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+                  ],
+                  "sharedAt": 1791757381038
+                }
+              ],
+              "budget": {
+                "hour": 497710,
+                "bytes": 0,
+                "requests": 0
+              },
+              "denied": 0,
+              "deniedReasons": {},
+              "peakActive": 0,
+              "diskBytes": 600000,
+              "active": 0,
+              "queued": 0,
+              "limits": {
+                "fileBytes": 2097152,
+                "preservedBytes": 16777216,
+                "preservedRecords": 100,
+                "servedBytes": 8388608,
+                "servedRequests": 128,
+                "servingConcurrency": 2,
+                "servingQueue": 2,
+                "blockBytes": 1048576,
+                "receivedBytes": 16777216
+              },
+              "bytes": 600000,
+              "count": 1
+            },
+            "read": {
+              "bytes": 0,
+              "count": 0,
+              "roots": [],
+              "rejections": {}
+            }
+          },
+          "rtc": [],
+          "peerId": "12D3KooWSGFA77kMUnPBibUKA8dW9dEbKGBjERR1R7pAbsq3L1bt",
+          "addresses": [
+            "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/p2p/12D3KooWSGFA77kMUnPBibUKA8dW9dEbKGBjERR1R7pAbsq3L1bt",
+            "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/webrtc/p2p/12D3KooWSGFA77kMUnPBibUKA8dW9dEbKGBjERR1R7pAbsq3L1bt"
+          ],
+          "connections": [
+            {
+              "peer": "12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF",
+              "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF"
+            }
+          ],
+          "pins": [
+            "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+          ],
+          "events": [
+            {
+              "at": "2026-10-11T22:22:59.918Z",
+              "type": "ready",
+              "detail": true
+            },
+            {
+              "at": "2026-10-11T22:22:59.974Z",
+              "type": "start",
+              "detail": "12D3KooWSGFA77kMUnPBibUKA8dW9dEbKGBjERR1R7pAbsq3L1bt"
+            },
+            {
+              "at": "2026-10-11T22:23:01.039Z",
+              "type": "add",
+              "detail": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+            },
+            {
+              "at": "2026-10-11T22:23:01.041Z",
+              "type": "pin",
+              "detail": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "B fetched and pinned from A offscreen",
+      "at": "2026-10-11T22:23:02.046Z",
+      "detail": {
+        "policy": {
+          "public": {
+            "records": [
+              {
+                "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+                "bytes": 600000,
+                "fileBytes": 600000,
+                "blocks": [
+                  "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+                ],
+                "sharedAt": 1791757382040
+              }
+            ],
+            "budget": {
+              "hour": 497710,
+              "bytes": 0,
+              "requests": 0
+            },
+            "denied": 0,
+            "deniedReasons": {},
+            "peakActive": 0,
+            "diskBytes": 600000,
+            "active": 0,
+            "queued": 0,
+            "limits": {
+              "fileBytes": 2097152,
+              "preservedBytes": 16777216,
+              "preservedRecords": 100,
+              "servedBytes": 8388608,
+              "servedRequests": 128,
+              "servingConcurrency": 2,
+              "servingQueue": 2,
+              "blockBytes": 1048576,
+              "receivedBytes": 16777216
+            },
+            "bytes": 600000,
+            "count": 1
+          },
+          "read": {
+            "bytes": 600000,
+            "count": 1,
+            "roots": [
+              "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+            ],
+            "rejections": {}
+          }
+        },
+        "rtc": [],
+        "peerId": "12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98",
+        "addresses": [
+          "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/p2p/12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98",
+          "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/webrtc/p2p/12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98"
+        ],
+        "connections": [
+          {
+            "peer": "12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF",
+            "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF"
+          },
+          {
+            "peer": "12D3KooWSGFA77kMUnPBibUKA8dW9dEbKGBjERR1R7pAbsq3L1bt",
+            "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/webrtc/p2p/12D3KooWSGFA77kMUnPBibUKA8dW9dEbKGBjERR1R7pAbsq3L1bt"
+          }
+        ],
+        "pins": [
+          "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+        ],
+        "events": [
+          {
+            "at": "2026-10-11T22:23:01.835Z",
+            "type": "ready",
+            "detail": true
+          },
+          {
+            "at": "2026-10-11T22:23:01.893Z",
+            "type": "start",
+            "detail": "12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98"
+          },
+          {
+            "at": "2026-10-11T22:23:01.995Z",
+            "type": "dial",
+            "detail": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/webrtc/p2p/12D3KooWSGFA77kMUnPBibUKA8dW9dEbKGBjERR1R7pAbsq3L1bt"
+          },
+          {
+            "at": "2026-10-11T22:23:02.025Z",
+            "type": "metadata",
+            "detail": {
+              "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+              "type": "raw",
+              "size": "600000"
+            }
+          },
+          {
+            "at": "2026-10-11T22:23:02.027Z",
+            "type": "get",
+            "detail": {
+              "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+              "bytes": 600000,
+              "hash": "a91ac4210af1cc07153370d86b9079fd111dd94e6e3941d1a8c8cc1868b5c3f7"
+            }
+          },
+          {
+            "at": "2026-10-11T22:23:02.031Z",
+            "type": "metadata",
+            "detail": {
+              "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+              "type": "raw",
+              "size": "600000"
+            }
+          },
+          {
+            "at": "2026-10-11T22:23:02.040Z",
+            "type": "serve",
+            "detail": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+          },
+          {
+            "at": "2026-10-11T22:23:02.040Z",
+            "type": "pin",
+            "detail": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Stopped B service worker through Chrome DevTools",
+      "at": "2026-10-11T22:23:02.111Z",
+      "detail": true
+    },
+    {
+      "name": "C retrieved after A closed, B service worker stopped, B control page closed",
+      "at": "2026-10-11T22:23:02.849Z",
+      "detail": {
+        "policy": {
+          "public": {
+            "records": [],
+            "budget": {
+              "hour": 497710,
+              "bytes": 0,
+              "requests": 0
+            },
+            "denied": 0,
+            "deniedReasons": {},
+            "peakActive": 0,
+            "diskBytes": 0,
+            "active": 0,
+            "queued": 0,
+            "limits": {
+              "fileBytes": 2097152,
+              "preservedBytes": 16777216,
+              "preservedRecords": 100,
+              "servedBytes": 8388608,
+              "servedRequests": 128,
+              "servingConcurrency": 2,
+              "servingQueue": 2,
+              "blockBytes": 1048576,
+              "receivedBytes": 16777216
+            },
+            "bytes": 0,
+            "count": 0
+          },
+          "read": {
+            "bytes": 600000,
+            "count": 1,
+            "roots": [
+              "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+            ],
+            "rejections": {}
+          }
+        },
+        "rtc": [],
+        "peerId": "12D3KooW9uGwEiCJeqHWBySWGChYWrs5K62txCSkwfAQmvNRXndh",
+        "addresses": [
+          "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/p2p/12D3KooW9uGwEiCJeqHWBySWGChYWrs5K62txCSkwfAQmvNRXndh",
+          "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/webrtc/p2p/12D3KooW9uGwEiCJeqHWBySWGChYWrs5K62txCSkwfAQmvNRXndh"
+        ],
+        "connections": [
+          {
+            "peer": "12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF",
+            "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF"
+          },
+          {
+            "peer": "12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98",
+            "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/webrtc/p2p/12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98"
+          }
+        ],
+        "pins": [],
+        "events": [
+          {
+            "at": "2026-10-11T22:23:02.664Z",
+            "type": "ready",
+            "detail": true
+          },
+          {
+            "at": "2026-10-11T22:23:02.722Z",
+            "type": "start",
+            "detail": "12D3KooW9uGwEiCJeqHWBySWGChYWrs5K62txCSkwfAQmvNRXndh"
+          },
+          {
+            "at": "2026-10-11T22:23:02.815Z",
+            "type": "dial",
+            "detail": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/webrtc/p2p/12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98"
+          },
+          {
+            "at": "2026-10-11T22:23:02.844Z",
+            "type": "metadata",
+            "detail": {
+              "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+              "type": "raw",
+              "size": "600000"
+            }
+          },
+          {
+            "at": "2026-10-11T22:23:02.847Z",
+            "type": "get",
+            "detail": {
+              "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+              "bytes": 600000,
+              "hash": "a91ac4210af1cc07153370d86b9079fd111dd94e6e3941d1a8c8cc1868b5c3f7"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "B browser restart retained offscreen pin identity and bytes",
+      "at": "2026-10-11T22:23:03.575Z",
+      "detail": {
+        "policy": {
+          "public": {
+            "records": [
+              {
+                "cid": "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64",
+                "bytes": 600000,
+                "fileBytes": 600000,
+                "blocks": [
+                  "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+                ],
+                "sharedAt": 1791757382040
+              }
+            ],
+            "budget": {
+              "hour": 497710,
+              "bytes": 600000,
+              "requests": 1
+            },
+            "denied": 0,
+            "deniedReasons": {},
+            "peakActive": 1,
+            "diskBytes": 600000,
+            "active": 0,
+            "queued": 0,
+            "limits": {
+              "fileBytes": 2097152,
+              "preservedBytes": 16777216,
+              "preservedRecords": 100,
+              "servedBytes": 8388608,
+              "servedRequests": 128,
+              "servingConcurrency": 2,
+              "servingQueue": 2,
+              "blockBytes": 1048576,
+              "receivedBytes": 16777216
+            },
+            "bytes": 600000,
+            "count": 1
+          },
+          "read": {
+            "bytes": 600000,
+            "count": 1,
+            "roots": [
+              "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+            ],
+            "rejections": {}
+          }
+        },
+        "rtc": [],
+        "peerId": "12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98",
+        "addresses": [
+          "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/p2p/12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98",
+          "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF/p2p-circuit/webrtc/p2p/12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98"
+        ],
+        "connections": [
+          {
+            "peer": "12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF",
+            "address": "/ip4/127.0.0.1/tcp/4329/ws/p2p/12D3KooWGsdme7aS9hy7t8crB7n2m8DU9xcPQpJ11UEurRp3XCBF"
+          }
+        ],
+        "pins": [
+          "bafkreifjdlccccxrzqdrkm3q3bvza6p5ceo5sttohfa5dkgizqmgrnod64"
+        ],
+        "events": [
+          {
+            "at": "2026-10-11T22:23:03.504Z",
+            "type": "ready",
+            "detail": true
+          },
+          {
+            "at": "2026-10-11T22:23:03.561Z",
+            "type": "start",
+            "detail": "12D3KooWK7756yv6yDfxhJQ6CqF4uFNvNaZW87VaimzQZbth2L98"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [],
+  "ok": true
+}

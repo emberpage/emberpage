@@ -1,0 +1,155 @@
+{
+  "at": "2026-10-11T22:09:49.974Z",
+  "scope": "Disposable MV3 browser on this host. Actual abrupt process termination, not simulated offline.",
+  "steps": [
+    {
+      "name": "Committed private bytes and explicit serving pin",
+      "detail": {
+        "cid": "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki",
+        "peerId": "12D3KooWMVe5wxyjLqLam1C9u1ef3EdJ3D14TMPfVeJUZMAxsANB",
+        "policy": {
+          "public": {
+            "records": [
+              {
+                "cid": "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki",
+                "bytes": 150000,
+                "fileBytes": 150000,
+                "blocks": [
+                  "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki"
+                ],
+                "sharedAt": 1791756591507
+              }
+            ],
+            "budget": {
+              "hour": 497710,
+              "bytes": 0,
+              "requests": 0
+            },
+            "denied": 0,
+            "active": 0,
+            "limits": {
+              "fileBytes": 2097152,
+              "preservedBytes": 16777216,
+              "preservedRecords": 100,
+              "servedBytes": 8388608,
+              "servedRequests": 128,
+              "servingConcurrency": 2,
+              "blockBytes": 1048576,
+              "receivedBytes": 16777216
+            },
+            "bytes": 150000,
+            "count": 1
+          },
+          "read": {
+            "bytes": 150000,
+            "count": 1,
+            "roots": [
+              "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki"
+            ]
+          }
+        }
+      },
+      "at": "2026-10-11T22:09:51.510Z"
+    },
+    {
+      "name": "Offscreen close and recreation retained exact pinned bytes and identity",
+      "detail": {
+        "public": {
+          "records": [
+            {
+              "cid": "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki",
+              "bytes": 150000,
+              "fileBytes": 150000,
+              "blocks": [
+                "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki"
+              ],
+              "sharedAt": 1791756591507
+            }
+          ],
+          "budget": {
+            "hour": 497710,
+            "bytes": 0,
+            "requests": 0
+          },
+          "denied": 0,
+          "active": 0,
+          "limits": {
+            "fileBytes": 2097152,
+            "preservedBytes": 16777216,
+            "preservedRecords": 100,
+            "servedBytes": 8388608,
+            "servedRequests": 128,
+            "servingConcurrency": 2,
+            "blockBytes": 1048576,
+            "receivedBytes": 16777216
+          },
+          "bytes": 150000,
+          "count": 1
+        },
+        "read": {
+          "bytes": 150000,
+          "count": 1,
+          "roots": [
+            "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki"
+          ]
+        }
+      },
+      "at": "2026-10-11T22:09:51.611Z"
+    },
+    {
+      "name": "Abruptly terminated verified disposable Chrome process",
+      "detail": {
+        "signal": "SIGKILL",
+        "profileVerified": true
+      },
+      "at": "2026-10-11T22:09:51.629Z"
+    },
+    {
+      "name": "Crash restart recovered identity pins exact bytes and policy",
+      "detail": {
+        "public": {
+          "records": [
+            {
+              "cid": "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki",
+              "bytes": 150000,
+              "fileBytes": 150000,
+              "blocks": [
+                "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki"
+              ],
+              "sharedAt": 1791756591507
+            }
+          ],
+          "budget": {
+            "hour": 497710,
+            "bytes": 0,
+            "requests": 0
+          },
+          "denied": 0,
+          "active": 0,
+          "limits": {
+            "fileBytes": 2097152,
+            "preservedBytes": 16777216,
+            "preservedRecords": 100,
+            "servedBytes": 8388608,
+            "servedRequests": 128,
+            "servingConcurrency": 2,
+            "blockBytes": 1048576,
+            "receivedBytes": 16777216
+          },
+          "bytes": 150000,
+          "count": 1
+        },
+        "read": {
+          "bytes": 150000,
+          "count": 1,
+          "roots": [
+            "bafkreiafiksxpsmswuboza67sixxnlzbp62kzc5x2viwtjsnniboyonyki"
+          ]
+        }
+      },
+      "at": "2026-10-11T22:09:52.238Z"
+    }
+  ],
+  "ok": false,
+  "error": "page.evaluate: Target page, context or browser has been closed\n    at call (/local/user/Developer/meshcache/spikes/ipfs-mv3/lifecycle.mjs:21:43)\n    at /local/user/Developer/meshcache/spikes/ipfs-mv3/lifecycle.mjs:39:8"
+}

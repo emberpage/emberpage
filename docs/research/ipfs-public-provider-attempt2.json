@@ -1,0 +1,115 @@
+{
+  "at": "2026-10-11T22:43:21.979Z",
+  "scope": "Existing public CIDs; outbound native TCP DHT and Bitswap only. No HTTP gateways, uploads, provider publication, listen ports, router changes, accounts, or independent second NAT claim.",
+  "candidates": [
+    {
+      "cid": "bafkreig24ijzqxj3cxdp6yh6ia2ysxzvxsfnd6rzahxxjv6ofcuix52wtq",
+      "source": "https://docs.ipfs.tech/how-to/kubo-basic-cli/",
+      "providers": [
+        {
+          "id": "bafzaajaiaejcbygrrl6ou7eqqfr5ctrdnnrx5ttclzf5pz7ofereu6sfqp5lb3yn",
+          "addresses": [
+            "/dns4/178-248-249-144.k51qzi5uqu5dlsb64oietpu6s8vrfg468rg86c5miz8qz84f31nsa1hh7ijeod.libp2p.direct/tcp/4001/tls/ws",
+            "/ip4/178.248.249.144/tcp/4001",
+            "/ip4/178.248.249.144/udp/4001/webrtc-direct/certhash/uEiC1pmRchdzZ7wy_D9jXV3IudRMmmm2M3HrN-BX95kFJcQ",
+            "/ip4/178.248.249.144/udp/4001/quic-v1",
+            "/ip4/178.248.249.144/udp/4001/quic-v1/webtransport/certhash/uEiDGQ46mInDWBPVoStqZaUeAyj7R40nOKUVnYyvJyBzDgw/certhash/uEiB1OmakbJzJQ77rRn-cT4A6WbRbEqJ8kdDujvbTk5r-vQ"
+          ],
+          "router": "libp2p-router"
+        }
+      ],
+      "transfers": [],
+      "queryOutcome": "providers-found",
+      "queryDurationMs": 8680,
+      "getOutcome": "error",
+      "getError": "Failed to load block for bafkreig24ijzqxj3cxdp6yh6ia2ysxzvxsfnd6rzahxxjv6ofcuix52wtq",
+      "getDurationMs": 30002
+    },
+    {
+      "cid": "bafybeie5nqv6kd3qnfjupgvz34woh3oksc3iau6abmyajn7qvtf6d2ho34",
+      "source": "https://docs.ipfs.tech/how-to/command-line-quick-start/",
+      "providers": [
+        {
+          "id": "bafzaajaiaejcan6hqxiyvwn5bflged6cx3xtcozhp7sa66jviwh7h2xtzrqvqoig",
+          "addresses": [
+            "/ip4/135.181.165.203/tcp/4001",
+            "/dns4/135-181-165-203.k51qzi5uqu5dhkmyvl8h78pq9iblru2bcr555xvbr9ov1xvqh61i9k013kneh2.libp2p.direct/tcp/4001/tls/ws",
+            "/ip4/127.0.0.1/tcp/4001"
+          ],
+          "router": "libp2p-router"
+        },
+        {
+          "id": "bafzaajaiaejcaahmtmrx4eqzxuz4nlphoa7fpbmfulgrrcisg622kyrbxh6tljss",
+          "addresses": [
+            "/dns4/86-33-27-233.k51qzi5uqu5dg7f2jn9qxojvfynus4spf6ooxnvaceor81n0evah5beingo76a.libp2p.direct/tcp/4001/tls/ws",
+            "/ip4/86.33.27.233/tcp/4001",
+            "/ip4/127.0.0.1/tcp/4001",
+            "/ip6/::1/tcp/4001"
+          ],
+          "router": "libp2p-router"
+        },
+        {
+          "id": "bafzaajaiaejcapx53mou7fvts3rs4aw7ygsyymvjr2ibbbveqkzjnaqq7hnaenxa",
+          "addresses": [
+            "/dns4/188-166-124-242.k51qzi5uqu5dhr3xmstalomjmevpesg8kmjv5utulrxdmicrybn0vx5hdgdcyo.libp2p.direct/tcp/4001/tls/ws",
+            "/ip4/[private-address]/tcp/4001",
+            "/ip4/[private-address]/udp/4001/quic-v1",
+            "/ip4/[private-address]/udp/4001/quic-v1/webtransport/certhash/uEiA29z3FwFFR5osxWu2JBjokg4TwfOcmfcFtFzZMEEaH8A/certhash/uEiAdsW9ih-bCxzeAqSP9QO5VqHf4_F8CoaFwB_wb5s2j1Q",
+            "/ip4/[private-address]/udp/4001/webrtc-direct/certhash/uEiC9zg1bVi6COg9vnmKGO955jmy9kZ-wGFUQeBWAKC4Gdw",
+            "/ip4/188.166.124.242/tcp/4001",
+            "/ip4/188.166.124.242/udp/4001/webrtc-direct/certhash/uEiC9zg1bVi6COg9vnmKGO955jmy9kZ-wGFUQeBWAKC4Gdw"
+          ],
+          "router": "libp2p-router"
+        },
+        {
+          "id": "bafzaajaiaejcabjoino7o4pjxvnw6atylsx7wyf7vmmtzrpe5jeh2ciz4dgjjs34",
+          "addresses": [
+            "/ip4/88.198.23.246/tcp/4001",
+            "/ip6/2a01:4f8:222:22c7::2/tcp/4001",
+            "/dns4/88-198-23-246.k51qzi5uqu5dgb8k6rdwrfdqwj8dxbfvapjhguht158vdrscf78og1yk6p22rg.libp2p.direct/tcp/4001/tls/ws",
+            "/dns6/2a01-4f8-222-22c7--2.k51qzi5uqu5dgb8k6rdwrfdqwj8dxbfvapjhguht158vdrscf78og1yk6p22rg.libp2p.direct/tcp/4001/tls/ws"
+          ],
+          "router": "libp2p-router"
+        },
+        {
+          "id": "bafzaajaiaejcaexsoteuhpldhb44v642b64zxj5fnz6gmtjp2b3fg52blwzs5ewh",
+          "addresses": [
+            "/ip4/15.204.211.162/tcp/4001/p2p/12D3KooWB4meURWofmHz7QYgqktAiMbjykEFxDKohUHMZ5LdMuHW/p2p-circuit",
+            "/ip4/127.0.0.1/tcp/14003",
+            "/ip4/173.234.27.178/tcp/4001/p2p/12D3KooWNwCDzzv1qcVg6JFe2ioJZMe5y8Bq9h6SPbAzaet9McVT/p2p-circuit",
+            "/ip6/2604:2dc0:101:200::25b3/tcp/4001/p2p/12D3KooWB4meURWofmHz7QYgqktAiMbjykEFxDKohUHMZ5LdMuHW/p2p-circuit",
+            "/dns4/15-204-211-162.k51qzi5uqu5dgn8covzp8685tgshunw0sffpucuj8nsl60rqhi4hiu65rak9ql.libp2p.direct/tcp/4001/tls/ws/p2p/12D3KooWB4meURWofmHz7QYgqktAiMbjykEFxDKohUHMZ5LdMuHW/p2p-circuit",
+            "/dns6/2604-2dc0-101-200--25b3.k51qzi5uqu5dgn8covzp8685tgshunw0sffpucuj8nsl60rqhi4hiu65rak9ql.libp2p.direct/tcp/4001/tls/ws/p2p/12D3KooWB4meURWofmHz7QYgqktAiMbjykEFxDKohUHMZ5LdMuHW/p2p-circuit"
+          ],
+          "router": "libp2p-router"
+        }
+      ],
+      "transfers": [
+        {
+          "cid": "bafybeie5nqv6kd3qnfjupgvz34woh3oksc3iau6abmyajn7qvtf6d2ho34",
+          "sender": "12D3KooWEuNLAqYExV87cHttVkfizaZdGk8tTarS7mCd1uiiLZg8"
+        }
+      ],
+      "queryOutcome": "providers-found",
+      "queryDurationMs": 145,
+      "getOutcome": "verified-block",
+      "bytes": 309,
+      "sha256": "9d6c2be50f706953479ab9df2ce3edca90b68053c00b3004b7f0accbe1e8eedf",
+      "getDurationMs": 2480
+    }
+  ],
+  "bootstraps": [
+    {
+      "address": "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
+      "ok": true,
+      "remoteAddress": "/dns4/chic-1-b.bootstrap.ipni.io/tcp/4011/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN"
+    },
+    {
+      "address": "/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
+      "ok": true,
+      "remoteAddress": "/dns4/lith-1.bootstrap.ipni.io/tcp/4001/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb"
+    }
+  ],
+  "durationMs": 42198,
+  "cleanup": "Native node stopped; in-memory fetched blocks and ephemeral identity discarded."
+}

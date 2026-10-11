@@ -1,0 +1,126 @@
+import { chromium } from 'playwright';
+import { mkdtemp, cp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { createServer } from 'node:http';
+import assert from 'node:assert/strict';
+
+const root = await mkdtemp(join(tmpdir(), 'meshcache-smoke-'));
+const title = `The coastal field notebook ${crypto.randomUUID().slice(0, 8)}`;
+const fixture = `<html><head><title>${title}</title></head><body><article><h1>${title}</h1>`
+  + Array.from({ length: 12 }, (_, index) => `<p>Observation ${index + 1}. Along the coast, a team of researchers records the rhythm of the tides, the changing weather, and the seabirds that return each season. Their field notes reveal how carefully watching a place helps us understand its patterns over time.</p>`).join('')
+  + '<figure><img src="/figure.png" alt="A sample illustration"><figcaption>The article illustration.</figcaption></figure><table><tbody><tr>'
+  + Array.from({ length: 12 }, (_, index) => `<td>LongColumnHeading${index}</td>`).join('')
+  + '</tr></tbody></table><script>window.fixtureScript=true</script><img src="https://example.com/tracker.gif"></article></body></html>';
+const figure = await readFile('public/icons/icon-128.png');
+const server = createServer((request, response) => {
+  if (request.url === '/figure.png') {
+    response.writeHead(200, { 'content-type': 'image/png' }); response.end(figure);
+  } else {
+    response.writeHead(200, { 'content-type': 'text/html' }); response.end(fixture);
+  }
+});
+await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const origin = `http://127.0.0.1:${server.address().port}`;
+let context;
+const publicNetworkCalls = [];
+
+async function call(page, action, fields = {}) {
+  const response = await page.evaluate(message => chrome.runtime.sendMessage({ target: 'background', ...message }), { action, ...fields });
+  assert.equal(response?.ok, true, JSON.stringify(response));
+  return response.data;
+}
+async function keyboardActivate(page, selector) {
+  await page.locator(selector).focus();
+  await page.keyboard.press('Enter');
+}
+
+try {
+  const extension = join(root, 'extension');
+  await cp(resolve('.output/chrome-mv3'), extension, { recursive: true });
+  const manifest = JSON.parse(await readFile(join(extension, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.permissions.includes('alarms'), false, 'The shipped extension must not schedule background actions.');
+  // Automation substitutes a temporary local-fixture permission for the toolbar's activeTab gesture.
+  manifest.host_permissions = [`${origin}/*`];
+  await writeFile(join(extension, 'manifest.json'), JSON.stringify(manifest));
+  context = await chromium.launchPersistentContext(join(root, 'profile'), {
+    headless: true, channel: 'chromium', executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
+    viewport: { width: 1000, height: 800 },
+    args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  });
+  context.setDefaultTimeout(90_000);
+  context.on('request', request => { if (/primal\.net/.test(request.url())) publicNetworkCalls.push(request.url()); });
+  const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
+  const id = new URL(worker.url()).host;
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${id}/popup.html`);
+  await popup.locator('#accept').waitFor({ state: 'visible' });
+  await popup.locator('#accept').focus();
+  assert.equal(await popup.evaluate(() => document.activeElement.id), 'accept');
+  await popup.keyboard.press('Enter');
+  await popup.locator('#app').waitFor({ state: 'visible' });
+  const articlePage = await context.newPage();
+  await articlePage.goto(`${origin}/article?utm_source=test&id=42`);
+  await articlePage.waitForFunction(() => document.querySelector('img[src="/figure.png"]').naturalWidth > 0);
+  await popup.reload();
+  await popup.locator('#app').waitFor({ state: 'visible' });
+  await popup.waitForFunction(() => !document.querySelector('#capture').disabled);
+  assert.equal(await worker.evaluate(() => chrome.offscreen.hasDocument()), false, 'Opening Read and Cache must not start the mesh.');
+  await popup.keyboard.press('Tab');
+  assert.equal(await popup.evaluate(() => document.activeElement.dataset.view), 'read');
+  await popup.keyboard.press('Tab');
+  assert.equal(await popup.evaluate(() => document.activeElement.dataset.view), 'cache');
+  await popup.keyboard.press('Enter');
+  const reviewPromise = context.waitForEvent('page');
+  await keyboardActivate(popup, '#capture');
+  const review = await reviewPromise;
+  await review.waitForLoadState();
+  await review.waitForFunction(() => !document.querySelector('#save').disabled);
+  assert.ok((await review.locator('#article').textContent()).length >= 1000);
+  assert.equal(await review.locator('#article script,#article img[src^="http"]').count(), 0);
+  assert.equal(await review.locator('#article img[src^="data:image/webp;base64,"]').count(), 1);
+  await review.waitForFunction(() => document.querySelector('#article img')?.naturalWidth > 0);
+  await mkdir('artifacts', { recursive: true });
+  for (const width of [360, 800, 1280]) {
+    await review.setViewportSize({ width, height: 800 });
+    assert.equal(await review.evaluate(() => document.body.scrollWidth <= innerWidth), true, `Review overflows at ${width}`);
+    await review.screenshot({ path: `artifacts/review-${width}.png`, fullPage: true });
+  }
+  await review.setViewportSize({ width: 1000, height: 800 });
+  await review.screenshot({ path: 'artifacts/review.png', fullPage: true });
+  await review.locator('#text-only').focus();
+  assert.equal(await review.evaluate(() => document.activeElement.id), 'text-only');
+  await review.keyboard.press('Space');
+  assert.equal(await review.locator('#text-only').isChecked(), true);
+  await review.keyboard.press('Tab');
+  assert.equal(await review.evaluate(() => document.activeElement.id), 'save');
+  await review.keyboard.press('Enter');
+  await review.waitForFunction(() => document.querySelector('#review-controls').hidden || document.querySelector('#status').classList.contains('error'));
+  assert.equal(await review.locator('#status').textContent(), 'Saved on this device.');
+  await popup.reload();
+  await popup.locator('#app').waitFor({ state: 'visible' });
+  await keyboardActivate(popup, '[data-view="library"]');
+  await popup.locator('#library-list .item-title').waitFor();
+  assert.match(await popup.locator('#library-list .item-detail').textContent(), /Saved on this device/);
+  await popup.screenshot({ path: 'artifacts/popup-saved.png' });
+  const readerPromise = context.waitForEvent('page');
+  await keyboardActivate(popup, '#library-list .item-main');
+  const reader = await readerPromise;
+  await reader.waitForLoadState();
+  await reader.locator('#source').waitFor({ state: 'visible' });
+  assert.match(await reader.locator('#article').textContent(), /Observation 12/);
+  assert.equal(await reader.locator('#article img,#article script').count(), 0);
+  assert.equal(await reader.locator('#source').getAttribute('href'), `${origin}/article?id=42`);
+  await reader.screenshot({ path: 'artifacts/reader.png', fullPage: true });
+
+  assert.equal(publicNetworkCalls.length, 0, 'Private caching and reading must not publish or query a provider.');
+  assert.equal((await call(popup, 'LOCAL_CATALOG')).length, 0, 'Private copies must not enter the popular list.');
+  await popup.getByRole('button', { name: /^Remove / }).click();
+  await popup.locator('#library-list .empty').waitFor();
+
+  console.log('PASS: keyboard Popular/Cache/Saved, private caching, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
+} finally {
+  await context?.close();
+  await new Promise(resolve => server.close(resolve));
+  await rm(root, { recursive: true, force: true });
+}
