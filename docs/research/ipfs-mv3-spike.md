@@ -1,6 +1,6 @@
 # IPFS in a separate MV3 extension: measured spike
 
-2026-10-11. This is an isolated test extension in `spikes/ipfs-mv3`, not a change to MeshCache. It imports the browser spike's bundled Helia implementation into a Chrome offscreen document with the `WEB_RTC` reason. The manifest allows only the local experiment's WebSocket relay; there is no article gateway broker or public bootstrap.
+2026-10-11. This is an isolated test extension in `spikes/ipfs-mv3`, not a change to Ember Page. It imports the browser spike's bundled Helia implementation into a Chrome offscreen document with the `WEB_RTC` reason. The manifest allows only the local experiment's WebSocket relay; there is no article gateway broker or public bootstrap.
 
 ## Result
 

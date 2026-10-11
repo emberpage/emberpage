@@ -56,7 +56,7 @@ function newest(a, b) {
 /** Retain verified transport metadata only; this ledger never qualifies article bodies. */
 export class CatalogLedger {
   constructor({
-    name = 'meshcache-catalog-v1',
+    name = 'emberpage-catalog-v1',
     indexedDB = globalThis.indexedDB,
     now = () => Date.now(),
     maxRecords = 1000,

@@ -22,7 +22,7 @@ function verifyFeed(envelope,expectedKey,minimumSequence=0){
  assert.equal(envelope.key,expectedKey,'registered signer');
  assert(verify(null,Buffer.from(JSON.stringify(envelope.body)),createPublicKey({key:Buffer.from(envelope.key,'base64'),format:'der',type:'spki'}),Buffer.from(envelope.signature,'base64')),'signature');
  const body=envelope.body;
- assert.equal(body.format,'meshcache.feed.spike');assert(Number.isSafeInteger(body.sequence)&&body.sequence>=minimumSequence,'sequence rollback');
+ assert.equal(body.format,'emberpage.feed.spike');assert(Number.isSafeInteger(body.sequence)&&body.sequence>=minimumSequence,'sequence rollback');
  assert(Number.isSafeInteger(body.updatedAt)&&body.updatedAt>now-86400000&&body.updatedAt<=now+60000,'stale feed');
  assert(Array.isArray(body.events)&&body.events.length<=maxEvents,'event count');
  const seen=new Set();return body.events.filter(event=>{
@@ -45,8 +45,8 @@ try {
  const copy=await encodeArticle({url:`https://example.invalid/${copies.length}`,title,byline:'Synthetic author',capturedAt:now,content:`<p>${content}</p>`});const cid=await strings(a).add(new TextDecoder().decode(copy.bytes));copies.push({...copy,cid:cid.toString(),content});}
  const listings=await Promise.all(copies.map(async(copy,i)=>({type:'listing',id:await sha256(`listing-${i}`),cid:copy.cid,url:copy.article.url,title:copy.article.title,byline:copy.article.byline,urlHash:copy.urlHash,contentHash:copy.contentHash,blobHash:copy.blobHash,size:copy.size,createdAt:now-3600000})));
  const rating={type:'rating',id:await sha256('vote-1'),urlHash:copies[0].urlHash,contentHash:copies[0].contentHash,createdAt:now,value:1};
- const feed=signed({format:'meshcache.feed.spike',sequence:1,updatedAt:now,events:[...listings,listings[0]]},owner);
- const voteFeed=signed({format:'meshcache.feed.spike',sequence:1,updatedAt:now,events:[rating,rating]},voter);
+ const feed=signed({format:'emberpage.feed.spike',sequence:1,updatedAt:now,events:[...listings,listings[0]]},owner);
+ const voteFeed=signed({format:'emberpage.feed.spike',sequence:1,updatedAt:now,events:[rating,rating]},voter);
  const feedCid=await strings(a).add(JSON.stringify(feed)),voteCid=await strings(a).add(JSON.stringify(voteFeed));
  const feedName=await ipns(a).publish('contributor',feedCid,{ttl:0,lifetime:3600000,upkeep:'none',signal:AbortSignal.timeout(10000)});
  const voteName=await ipns(a).publish('ratings',voteCid,{ttl:0,lifetime:3600000,upkeep:'none',signal:AbortSignal.timeout(10000)});
@@ -59,7 +59,7 @@ try {
  await check('Aggregator deduplicates metadata, reuses existing ranking, and does not fetch article bodies',async()=>{
  const articles=rankedArticles(accepted.filter(e=>e.type==='listing'),accepted.filter(e=>e.type==='rating'),now);assert.equal(articles.length,2);assert.equal(articles[0].rating.upvotes,1);
  for(const copy of copies)assert.equal(await aggregator.blockstore.has(CID.parse(copy.cid)),false);
- snapshot=signed({format:'meshcache.popular.spike',generatedAt:now,feeds:registry.length,articles},aggregatorSigner);
+ snapshot=signed({format:'emberpage.popular.spike',generatedAt:now,feeds:registry.length,articles},aggregatorSigner);
  });
  const snapshotCid=await strings(aggregator).add(JSON.stringify(snapshot)),snapshotName=await ipns(aggregator).publish('popular',snapshotCid,{ttl:0,lifetime:3600000,upkeep:'none',signal:AbortSignal.timeout(10000)});
  await check('Independent reader resolves aggregator IPNS and fetches signed immutable popularity snapshot',async()=>{

@@ -4,7 +4,7 @@ Observed 2026-10-11. This was an isolated live experiment, not a transport migra
 
 ## Result
 
-**Nostr-only can carry MeshCache's existing encrypted article packets with substantially more headroom than the current public Waku limit, on selected relays. Public relays are still not interchangeable or a storage guarantee.** Damus accepted and returned a 545,312-byte signed message. Primal accepted a 138,956-byte message but rejected the larger one despite advertising a 1,000,000-byte message limit. nos.lol rejected the representative article.
+**Nostr-only can carry Ember Page's existing encrypted article packets with substantially more headroom than the current public Waku limit, on selected relays. Public relays are still not interchangeable or a storage guarantee.** Damus accepted and returned a 545,312-byte signed message. Primal accepted a 138,956-byte message but rejected the larger one despite advertising a 1,000,000-byte message limit. nos.lol rejected the representative article.
 
 The simplest viable shape remains one transport: small signed catalog events for discovery, with article packets in separate signed events fetched by exact event ID. The independent aggregator would query only catalog/request/vote metadata; the extension would decrypt and apply its existing body filters before displaying any popular candidate. No Blossom provider, chunking, alternate article representation, or automatic relay fallback was introduced.
 
@@ -22,7 +22,7 @@ Three synthetic articles were created using high-entropy printable text, without
 | Representative | 126,410 | 138,388 | 138,956 | Passed |
 | Near article limit | 498,404 | 544,744 | 545,312 | Passed |
 
-Each relay received three independent body probes, seconds apart. Damus and Primal each received one small catalog event after an eligible body was retrieved and verified; nos.lol received none. Events were explicitly labeled synthetic, had a unique experiment namespace, used temporary regular kinds 8964/8965, and requested expiry after 15 minutes. These kinds are provisional, not assigned MeshCache standards. No real article was uploaded, no secret key or body is stored in the results, and temporary browser profiles were removed.
+Each relay received three independent body probes, seconds apart. Damus and Primal each received one small catalog event after an eligible body was retrieved and verified; nos.lol received none. Events were explicitly labeled synthetic, had a unique experiment namespace, used temporary regular kinds 8964/8965, and requested expiry after 15 minutes. These kinds are provisional, not assigned Ember Page standards. No real article was uploaded, no secret key or body is stored in the results, and temporary browser profiles were removed.
 
 ## Live relay observations
 

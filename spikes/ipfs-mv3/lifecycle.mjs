@@ -10,7 +10,7 @@ await cp(
   new URL("../ipfs-browser/dist/browser.js", import.meta.url),
   new URL("browser.js", import.meta.url),
 );
-const profile = await mkdtemp(join(tmpdir(), "meshcache-ipfs-crash-"));
+const profile = await mkdtemp(join(tmpdir(), "emberpage-ipfs-crash-"));
 const extension = resolve("spikes/ipfs-mv3"),
   relay = (await (await fetch("http://127.0.0.1:4328/relay.json")).json())
     .relay;

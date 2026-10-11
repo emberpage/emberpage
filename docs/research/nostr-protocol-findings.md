@@ -1,10 +1,10 @@
-# Nostr and Blossom for MeshCache
+# Nostr and Blossom for Ember Page
 
 Researched 2026-10-11. This is a design assessment, not an implemented migration or a provider availability test. Only primary specifications and maintainer source were consulted. No events or blobs were published, and no dependencies were added.
 
 ## Recommendation
 
-The initial assessment below considers Nostr metadata with Blossom files. The later Nostr-only assessment supersedes a blanket recommendation to add Blossom: qualify inline Nostr storage first because it has fewer moving parts. Nostr for small signed discovery events, with Blossom for the existing encrypted article file, separates article size from relay message size. The decisive difference is separation: relay message limits constrain metadata, while a separately selected blob provider constrains the article. This is an architectural inference from [NIP-94 file metadata](https://github.com/nostr-protocol/nips/blob/master/94.md) and [BUD-02 uploads](https://github.com/hzrd149/blossom/blob/master/buds/02.md), not a guarantee that a particular public service will accept MeshCache files.
+The initial assessment below considers Nostr metadata with Blossom files. The later Nostr-only assessment supersedes a blanket recommendation to add Blossom: qualify inline Nostr storage first because it has fewer moving parts. Nostr for small signed discovery events, with Blossom for the existing encrypted article file, separates article size from relay message size. The decisive difference is separation: relay message limits constrain metadata, while a separately selected blob provider constrains the article. This is an architectural inference from [NIP-94 file metadata](https://github.com/nostr-protocol/nips/blob/master/94.md) and [BUD-02 uploads](https://github.com/hzrd149/blossom/blob/master/buds/02.md), not a guarantee that a particular public service will accept Ember Page files.
 
 Keep the single HTML/WebP article representation and existing gzip/AES-GCM packet. Do not introduce chunking, alternate article formats, or automatic transport fallbacks. A migration would be one explicitly chosen transport, requiring separate acceptance tests against selected relays and blob providers. Keep the separate aggregator metadata-only; no extension-to-aggregator integration is proposed here.
 
@@ -14,7 +14,7 @@ Waku + Blossom is a narrower change: preserve Waku catalog/request/vote operatio
 
 ## Discovery and relay behavior
 
-Nostr signs events with Schnorr/secp256k1. Queries can combine kinds, authors, single-letter tag filters, time ranges, and initial result limits. An indexed MeshCache URL-hash tag permits targeted lookup without scanning every article. An initial query ends at `EOSE`, but its subscription remains live until closed. Event acceptance is acknowledged with `OK`, including a rejection reason. These mechanisms do not promise complete results, replication to other relays, or durable storage. [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md)
+Nostr signs events with Schnorr/secp256k1. Queries can combine kinds, authors, single-letter tag filters, time ranges, and initial result limits. An indexed Ember Page URL-hash tag permits targeted lookup without scanning every article. An initial query ends at `EOSE`, but its subscription remains live until closed. Event acceptance is acknowledged with `OK`, including a rejection reason. These mechanisms do not promise complete results, replication to other relays, or durable storage. [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md)
 
 Use bounded local validation and close subscriptions when each manual extension operation completes. Query a curated set of explicitly configured relays; deduplicate event IDs across them. The aggregator can maintain a rolling metadata subscription or poll independently. An empty answer means that the queried relays supplied no matching usable event, not that the article is absent everywhere.
 
@@ -22,11 +22,11 @@ Do **not** use kind 30078 or 78 for public discovery. Current NIP-78 explicitly 
 
 ## Proposed concrete contract
 
-The following conventions are a proposal for MeshCache, not an existing interoperable MeshCache NIP. Existing kinds retain their specified meanings; additional tags are application metadata. Provider acceptance of the chosen event kinds and tags must be checked before implementation.
+The following conventions are a proposal for Ember Page, not an existing interoperable Ember Page NIP. Existing kinds retain their specified meanings; additional tags are application metadata. Provider acceptance of the chosen event kinds and tags must be checked before implementation.
 
 ### Encrypted article blob
 
-Upload the exact UTF-8 JSON bytes of `{header, crypto}` produced by the current v1 packet implementation, as `application/json`. The header contains `version`, `urlHash`, `payloadHash`, millisecond `timestamp`, and authenticated `encoding:"gzip"`; crypto contains base64 `encryptedData` and `iv`. Do not modify key derivation, authenticated-header serialization, or plaintext hashing. Retain 500,000-byte decompressed plaintext and 680,000-byte envelope limits as client limits. These are MeshCache limits, not Blossom limits.
+Upload the exact UTF-8 JSON bytes of `{header, crypto}` produced by the current v1 packet implementation, as `application/json`. The header contains `version`, `urlHash`, `payloadHash`, millisecond `timestamp`, and authenticated `encoding:"gzip"`; crypto contains base64 `encryptedData` and `iv`. Do not modify key derivation, authenticated-header serialization, or plaintext hashing. Retain 500,000-byte decompressed plaintext and 680,000-byte envelope limits as client limits. These are Ember Page limits, not Blossom limits.
 
 Compute `blobHash = SHA256(exact uploaded bytes)`. This hash is **different** from `payloadHash = SHA256(raw article JSON)`. The former verifies storage transfer; the latter verifies authenticated article content. Never substitute one for the other. Receivers bound the HTTP download, verify blobHash, validate the packet, decrypt and bounded-decompress, verify payloadHash, then sanitize for display. Repeated encryption can yield different blob hashes for the same plaintext payload.
 
@@ -41,29 +41,29 @@ Use a NIP-94 file metadata event. `content` is a plain-text description/title, a
   "kind": 1063,
   "created_at": 1791734400,
   "tags": [
-    ["t", "meshcache-article"],
+    ["t", "emberpage-article"],
     ["url", "https://blob.example/HEX_BLOB_HASH.json"],
     ["m", "application/json"],
     ["x", "HEX_BLOB_HASH"],
     ["size", "123456"],
     ["u", "HEX_URL_HASH"],
     ["r", "https://example.com/article"],
-    ["meshcache-version", "1"],
-    ["meshcache-payload", "HEX_PLAINTEXT_PAYLOAD_HASH"],
-    ["meshcache-captured", "1791734400000"],
-    ["meshcache-byline", "A writer"],
+    ["emberpage-version", "1"],
+    ["emberpage-payload", "HEX_PLAINTEXT_PAYLOAD_HASH"],
+    ["emberpage-captured", "1791734400000"],
+    ["emberpage-byline", "A writer"],
     ["expiration", "1791820800"]
   ],
   "content": "Article title"
 }
 ```
 
-`url`, `m`, `x`, and `size` follow [NIP-94](https://github.com/nostr-protocol/nips/blob/master/94.md). `u` is a **MeshCache-specific URL-hash convention**, not a claim that Nostr standardizes it. `r` is the disclosed original link in this application. Multi-letter `meshcache-*` fields are read after retrieval; do not depend on relays indexing them. Publish an announcement only after the explicit share operation receives a successful blob upload response.
+`url`, `m`, `x`, and `size` follow [NIP-94](https://github.com/nostr-protocol/nips/blob/master/94.md). `u` is a **Ember Page-specific URL-hash convention**, not a claim that Nostr standardizes it. `r` is the disclosed original link in this application. Multi-letter `emberpage-*` fields are read after retrieval; do not depend on relays indexing them. Publish an announcement only after the explicit share operation receives a successful blob upload response.
 
 Exact lookup proposal:
 
 ```json
-{"kinds":[1063],"#t":["meshcache-article"],"#u":["HEX_URL_HASH"],"since":1791734400,"limit":100}
+{"kinds":[1063],"#t":["emberpage-article"],"#u":["HEX_URL_HASH"],"since":1791734400,"limit":100}
 ```
 
 Public browsing uses the same kind/type filter without `#u`. Recompute URL normalization/hash, require all known fields, reject duplicate conflicting singleton tags, and verify event signatures before metadata enters the index. Title/byline remain claims by the sharing key, not proof of the original publisher. Rank only locally verified votes; optional remote score/category/rating fields cannot influence ranking. Apply existing bounds, project only known fields, and ignore bounded optional metadata. Reject unsupported packet or application major versions; no negotiation framework is needed.
@@ -72,19 +72,19 @@ The extension reader must download and verify each candidate it intends to displ
 
 ### Requests: kind 1
 
-Use an ordinary plain-text note such as `Please share: Article title`, tagged `t=meshcache-request`, `u=urlHash`, `r=normalizedURL`, `meshcache-version=1`, and `expiration=requestTime+86400`. This request interpretation is MeshCache-specific; kind 1 itself remains a text note. It does not reserve a new globally assigned kind. Query kind 1 plus the request hashtag and optional `#u`; validate URL/hash and the bounded title before accepting a request. Canonical request identity remains URL hash, with newest timestamp per requester and a bounded aggregate list.
+Use an ordinary plain-text note such as `Please share: Article title`, tagged `t=emberpage-request`, `u=urlHash`, `r=normalizedURL`, `emberpage-version=1`, and `expiration=requestTime+86400`. This request interpretation is Ember Page-specific; kind 1 itself remains a text note. It does not reserve a new globally assigned kind. Query kind 1 plus the request hashtag and optional `#u`; validate URL/hash and the bounded title before accepting a request. Canonical request identity remains URL hash, with newest timestamp per requester and a bounded aggregate list.
 
 ### Votes: kind 7
 
-Use NIP-25 reactions with `content:"+"` or `"-"`, an `e` tag naming the announcement/request event, and a `p` tag naming that event's signer. Add `t=meshcache-vote` and a 24-hour expiration. This authenticates the reaction to a specific event. [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md)
+Use NIP-25 reactions with `content:"+"` or `"-"`, an `e` tag naming the announcement/request event, and a `p` tag naming that event's signer. Add `t=emberpage-vote` and a 24-hour expiration. This authenticates the reaction to a specific event. [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md)
 
-For MeshCache article ranking, resolve that referenced announcement from already verified metadata and map it to the plaintext payloadHash. Count at most one latest valid vote per `(pubkey, scope, canonical target)`, across duplicate announcements and relays; break equal-time ties deterministically by event ID. Never trust a voter-supplied target hash without the verified reference. Request votes map to the verified request's URL hash. Missing referenced metadata means an unresolved vote, not permission to fetch/decrypt an article in the aggregator. This mapping is application ranking policy, not a Nostr consensus rule.
+For Ember Page article ranking, resolve that referenced announcement from already verified metadata and map it to the plaintext payloadHash. Count at most one latest valid vote per `(pubkey, scope, canonical target)`, across duplicate announcements and relays; break equal-time ties deterministically by event ID. Never trust a voter-supplied target hash without the verified reference. Request votes map to the verified request's URL hash. Missing referenced metadata means an unresolved vote, not permission to fetch/decrypt an article in the aggregator. This mapping is application ranking policy, not a Nostr consensus rule.
 
 A signature proves key control, not one human or one independent copy. Cheap new keys make votes Sybil-vulnerable. Pubkey deduplication and rate limits reduce accidental repetition; they do not establish independent-user consensus. Nostr's key-generation API makes this limitation explicit in practice. [nostr-tools signing source](https://github.com/nbd-wtf/nostr-tools/blob/master/pure.ts)
 
 ## Expiration, provider policies, and privacy
 
-NIP-40's expiration tag uses Unix seconds. Clients should ignore expired events, but relays may retain them indefinitely and third parties can copy them. It is not an erasure or privacy guarantee. Apply MeshCache's 24-hour validity locally regardless of relay behavior; Blob retention needs its own provider policy and is not controlled by an event's expiration. [NIP-40](https://github.com/nostr-protocol/nips/blob/master/40.md)
+NIP-40's expiration tag uses Unix seconds. Clients should ignore expired events, but relays may retain them indefinitely and third parties can copy them. It is not an erasure or privacy guarantee. Apply Ember Page's 24-hour validity locally regardless of relay behavior; Blob retention needs its own provider policy and is not controlled by an event's expiration. [NIP-40](https://github.com/nostr-protocol/nips/blob/master/40.md)
 
 NIP-11 optionally advertises relay capabilities and restrictions: complete UTF-8 WebSocket message size, content character limit, query limits, timestamp windows, proof of work, authentication, payment, and restricted writes. Omitted fields do not mean unlimited service. Measure the final `["EVENT", signedEvent]` bytes, not just content. NIP-11 is advisory capability information; a server's current acceptance response remains authoritative. [NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md)
 
@@ -108,7 +108,7 @@ For simple extension UX, an extension-owned persistent signing key avoids requir
 
 ## Comparison with current public Waku
 
-| Property | Current MeshCache on public Waku | Proposed Nostr + Blossom |
+| Property | Current Ember Page on public Waku | Proposed Nostr + Blossom |
 | --- | --- | --- |
 | Article size | Entire encoded message must fit 153600 bytes. | Small relay announcement; blob provider independently limits file size. |
 | Discovery | Exact URL-hash content topic; separate global metadata/request/vote topics. | Kind + indexed type/hash tags; selected relay queries. |
@@ -118,7 +118,7 @@ For simple extension UX, an extension-owned persistent signing key avoids requir
 | Availability | Relay acknowledgement does not establish future Store retrieval. | Blob upload and relay acknowledgement do not establish future blob retrieval. |
 | Aggregator | Metadata index only. | Metadata events/votes/requests only; no blob fetch or decryption. |
 
-Waku's published network specification caps the **full protobuf message** at 150KB, recommends average messages around 4KB, and recommends Store retention of at least 12 hours. Proofless service is discretionary; Store persistence expects valid RLN proofs. Specified membership quota is 100 messages per 600-second epoch, not a universal free-client entitlement. Current MeshCache does not generate RLN proofs. [Waku network specification](https://dev-lip.logos.co/messaging/standards/core/64/network.html), [nwaku concrete 150KiB default](https://github.com/logos-messaging/logos-delivery/blob/master/logos_delivery/waku/waku_core/message/default_values.nim)
+Waku's published network specification caps the **full protobuf message** at 150KB, recommends average messages around 4KB, and recommends Store retention of at least 12 hours. Proofless service is discretionary; Store persistence expects valid RLN proofs. Specified membership quota is 100 messages per 600-second epoch, not a universal free-client entitlement. Current Ember Page does not generate RLN proofs. [Waku network specification](https://dev-lip.logos.co/messaging/standards/core/64/network.html), [nwaku concrete 150KiB default](https://github.com/logos-messaging/logos-delivery/blob/master/logos_delivery/waku/waku_core/message/default_values.nim)
 
 In this implementation session, a live public relay accepted a 4538-byte synthetic message, rejected a 339118-byte message with status 420 and the explicit 153600-byte limit, then accepted another small message. That is session evidence, not a new test performed for this research. The installed JS SDK's 1MiB utility check did not describe the deployed public service cap. Nostr should likewise be evaluated by real selected-provider responses, never by a library's permissive schema alone.
 
@@ -137,11 +137,11 @@ The protocol fit is favorable, but no public Nostr relay or Blossom provider has
 
 Added 2026-10-11 after the coordinator's read-only live NIP-11 checks. The coordinator observed `max_message_length=1000000`, `max_limit=500`, and NIP-40 support at `relay.damus.io` and `relay.primal.net`; no retention duration was advertised. `nos.lol` advertised 131072 bytes. A separate read-only Python HTTP request during this assessment confirmed the nos.lol value; Damus and Primal returned HTTP 403 to that request, so their observations are attributed to the coordinator rather than independently re-confirmed here. Endpoint information is provider policy and can change. [Damus endpoint](https://relay.damus.io), [Primal endpoint](https://relay.primal.net), [nos.lol endpoint](https://nos.lol), [NIP-11 limitation semantics](https://github.com/nostr-protocol/nips/blob/master/11.md)
 
-Given these advertised limits and the user's preference for simple code, **Nostr-only is the first candidate to qualify**. Place the existing encrypted packet JSON directly into the `content` string of a dedicated MeshCache body event. Retain separate small catalog/request/vote events. That removes Blossom HTTP upload/download/authentication, provider selection, CORS, and cross-provider partial-failure paths. It still leaves relay admission, retention, and data-transfer policy to prove. Do not implement Nostr-only plus a hidden Blossom or Waku fallback.
+Given these advertised limits and the user's preference for simple code, **Nostr-only is the first candidate to qualify**. Place the existing encrypted packet JSON directly into the `content` string of a dedicated Ember Page body event. Retain separate small catalog/request/vote events. That removes Blossom HTTP upload/download/authentication, provider selection, CORS, and cross-provider partial-failure paths. It still leaves relay admission, retention, and data-transfer policy to prove. Do not implement Nostr-only plus a hidden Blossom or Waku fallback.
 
-The protocol permits arbitrary event content and experimentation with regular kinds in the 1000–9999 range. A MeshCache-specific regular kind is therefore structurally legitimate. It would be a documented application convention, not an allocated/reserved global kind or a guarantee of public-relay acceptance. Select and check the actual number against the current kind registry and selected operators before implementation. Do not use kind 1063 for an inline article body: that kind describes a file through URL/hash metadata. Do not use private app-data kinds 78/30078 or ephemeral kinds 20000–29999. [NIP-01 kind ranges](https://github.com/nostr-protocol/nips/blob/master/01.md#kinds), [NIP-94](https://github.com/nostr-protocol/nips/blob/master/94.md), [NIP-78](https://github.com/nostr-protocol/nips/blob/master/78.md)
+The protocol permits arbitrary event content and experimentation with regular kinds in the 1000–9999 range. A Ember Page-specific regular kind is therefore structurally legitimate. It would be a documented application convention, not an allocated/reserved global kind or a guarantee of public-relay acceptance. Select and check the actual number against the current kind registry and selected operators before implementation. Do not use kind 1063 for an inline article body: that kind describes a file through URL/hash metadata. Do not use private app-data kinds 78/30078 or ephemeral kinds 20000–29999. [NIP-01 kind ranges](https://github.com/nostr-protocol/nips/blob/master/01.md#kinds), [NIP-94](https://github.com/nostr-protocol/nips/blob/master/94.md), [NIP-78](https://github.com/nostr-protocol/nips/blob/master/78.md)
 
-Proposed inline body fields: `kind=K_BODY` (dedicated regular kind, number deliberately unresolved), `content=JSON.stringify(existing encrypted v1 packet)`, `t=meshcache-body`, `u=urlHash`, and `expiration=captureTimeSeconds+86400`. A separate dedicated regular catalog kind uses bounded JSON content with the current catalog fields plus `bodyEventId`, and `t=meshcache-article`, `u=urlHash`. Catalog publication follows body acknowledgement. The body event is verified by event ID/signature and existing packet authentication; a catalog entry must agree with the body's URL hash and plaintext payload hash. Pin reads to that bodyEventId and payloadHash. This is one transport with two event types, not two article formats.
+Proposed inline body fields: `kind=K_BODY` (dedicated regular kind, number deliberately unresolved), `content=JSON.stringify(existing encrypted v1 packet)`, `t=emberpage-body`, `u=urlHash`, and `expiration=captureTimeSeconds+86400`. A separate dedicated regular catalog kind uses bounded JSON content with the current catalog fields plus `bodyEventId`, and `t=emberpage-article`, `u=urlHash`. Catalog publication follows body acknowledgement. The body event is verified by event ID/signature and existing packet authentication; a catalog entry must agree with the body's URL hash and plaintext payload hash. Pin reads to that bodyEventId and payloadHash. This is one transport with two event types, not two article formats.
 
 The separate aggregator subscribes only to catalog/request/vote kinds. It records bodyEventId as a reference and never queries body events or decrypts packets. Extension readers fetch the referenced body event and apply all existing validation and eligibility filters before listing a candidate. An acknowledged body followed by a rejected catalog remains a failed public listing, with the local saved copy preserved. Discovery cannot presume complete relay replication.
 

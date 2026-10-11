@@ -6,8 +6,9 @@ export const RELAY = 'wss://relay.primal.net';
 export const PROVIDER = 'https://blossom.primal.net';
 export const LISTING_KIND = 8965;
 export const RATING_KIND = 8966;
-export const LISTING_TAG = 'meshcache-v1-listing';
-export const RATING_TAG = 'meshcache-v1-rating';
+// Ember Page uses its own discovery namespace.
+export const LISTING_TAG = 'emberpage-v1-listing';
+export const RATING_TAG = 'emberpage-v1-rating';
 export const METADATA_BYTES = 8192;
 export const DISCOVERY_WINDOW_MS = 30 * 86400_000;
 const HASH = /^[a-f0-9]{64}$/;

@@ -1,6 +1,6 @@
 {
   "name": "emberpage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Explicit article caching with Blossom files and Nostr discovery.",

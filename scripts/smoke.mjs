@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
 
-const root = await mkdtemp(join(tmpdir(), 'meshcache-smoke-'));
+const root = await mkdtemp(join(tmpdir(), 'emberpage-smoke-'));
 const title = `The coastal field notebook ${crypto.randomUUID().slice(0, 8)}`;
 const fixture = `<html><head><title>${title}</title></head><body><article><h1>${title}</h1>`
   + Array.from({ length: 12 }, (_, index) => `<p>Observation ${index + 1}. Along the coast, a team of researchers records the rhythm of the tides, the changing weather, and the seabirds that return each season. Their field notes reveal how carefully watching a place helps us understand its patterns over time.</p>`).join('')

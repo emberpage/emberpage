@@ -36,7 +36,7 @@ refresh.addEventListener('click', () =>
 );
 send('READ', { id })
   .then(({ article, rating, shared }) => {
-    document.title = `${article.title} · MeshCache`;
+    document.title = `${article.title} · Ember Page`;
     document.querySelector('#title').textContent = article.title;
     document.querySelector('#meta').textContent = [
       article.byline,

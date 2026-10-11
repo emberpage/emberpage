@@ -1,4 +1,4 @@
-# Does MeshCache need Nostr?
+# Does Ember Page need Nostr?
 
 Researched 2026-10-11. This note concerns discovery architecture only. No production changes, uploads, or relay publications were made.
 
@@ -18,7 +18,7 @@ This separation follows Blossom's HTTP blob endpoints and Nostr's signed event/q
 
 GET `/<sha256>` retrieves a known blob; HEAD can check it without downloading the body. PUT `/upload` stores bytes and returns a descriptor containing URL, SHA-256, size, MIME type, and upload time. A file hash verifies bytes, not the article's provenance or popularity. [BUD-01](https://github.com/hzrd149/blossom/blob/master/buds/01.md), [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md)
 
-An original page's URL hash is not its Blossom blob hash. MeshCache encrypts using a random IV, so the same article can produce different encrypted files. Knowing the original URL therefore does not locate the blob: the reader needs a supplied descriptor or a discovery mapping. This follows the current packet implementation in `src/core/crypto.js`, not a Blossom lookup feature.
+An original page's URL hash is not its Blossom blob hash. Ember Page encrypts using a random IV, so the same article can produce different encrypted files. Knowing the original URL therefore does not locate the blob: the reader needs a supplied descriptor or a discovery mapping. This follows the current packet implementation in `src/core/crypto.js`, not a Blossom lookup feature.
 
 BUD-12 describes optional listing by **a known uploader pubkey**. It marks that listing endpoint unrecommended. It does not specify a cross-server, global article search or vote directory. A list of uploads by one known key cannot reveal all other uploaders or rank community copies. Implementations may require authorization; do not assume anonymous enumeration. [BUD-12](https://github.com/hzrd149/blossom/blob/master/buds/12.md)
 
@@ -31,7 +31,7 @@ Blossom authentication may use Nostr signing keys and signed kind-24242 events, 
 | Blossom + share links | Open a supplied blob reference, verify/decrypt, save locally. | Encode the original URL and blob reference in a share link or importable descriptor. No global discovery service. |
 | Blossom + selected uploader lists | Browse known contributors where the provider permits listing. | Maintain an explicit contributor list and merge provider-specific results. No complete global discovery. |
 | Blossom + new HTTP directory | Browse public listings, find URL/hash mappings, exchange votes/requests. | Define and run the directory's writes, queries, signatures, abuse controls, retention, and availability. |
-| Blossom + small Nostr events | Query public metadata by indexed tags, find blob references, exchange signed votes/requests. | Define the MeshCache event contract, validate it, and qualify selected relays. |
+| Blossom + small Nostr events | Query public metadata by indexed tags, find blob references, exchange signed votes/requests. | Define the Ember Page event contract, validate it, and qualify selected relays. |
 | Blossom + existing Waku metadata | Retain current metadata/request/vote exchange while moving article bodies off Waku. | Define blob references in the current catalog. Existing Waku admission and Store limitations remain. |
 
 The first two alternatives deliberately reduce the product's discovery capability. A new HTTP directory can satisfy discovery, but if all readers require it, it is a mandatory service. Renaming it an “optional aggregator” does not remove that dependency. Multiple directories could reduce dependence on one operator, but introduce another protocol and deployment project.

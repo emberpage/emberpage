@@ -11,7 +11,7 @@ await cp(
   new URL("browser.js", import.meta.url),
 );
 const extension = resolve("spikes/ipfs-mv3");
-const profiles = await mkdtemp(join(tmpdir(), "meshcache-ipfs-mv3-"));
+const profiles = await mkdtemp(join(tmpdir(), "emberpage-ipfs-mv3-"));
 const relay = (await (await fetch("http://127.0.0.1:4328/relay.json")).json())
   .relay;
 const contexts = [];

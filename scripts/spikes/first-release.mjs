@@ -7,13 +7,13 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 
 if (process.env.LIVE_FIRST_RELEASE !== '1') throw new Error('Live publication requires LIVE_FIRST_RELEASE=1.');
-const temporary = await mkdtemp(join(tmpdir(), 'meshcache-first-release-'));
-const journalPath = resolve('.meshcache/first-release-cleanup.json');
+const temporary = await mkdtemp(join(tmpdir(), 'emberpage-first-release-'));
+const journalPath = resolve('.emberpage/first-release-cleanup.json');
 const resultPath = resolve('docs/research/first-release-live.json');
 const results = { startedAt: new Date().toISOString(), runtime: 'Disposable Chrome MV3 extension page', operations: [] };
 let context, author, reader, journal, journalOwned = false;
 const browserSource = `
-import {MeshNetwork,createBlossomAuthorization,PROVIDER} from './src/mesh.ts';
+import {EmberNetwork,createBlossomAuthorization,PROVIDER} from './src/network.ts';
 import {NostrDirectory,validateListingEvent} from './src/network/nostr.js';
 import {encodeArticle} from './src/core/article.js';
 import {filterCandidates} from './src/core/candidates.js';
@@ -24,11 +24,11 @@ window.prepare=async()=>{
  secret=generateSecretKey();
  const runId=crypto.randomUUID();
  const canvas=document.createElement('canvas'); canvas.width=320;canvas.height=160;
- const ctx=canvas.getContext('2d');ctx.fillStyle='#263b32';ctx.fillRect(0,0,320,160);ctx.fillStyle='#ecf2dd';ctx.font='bold 24px sans-serif';ctx.fillText('MeshCache synthetic',24,85);
+ const ctx=canvas.getContext('2d');ctx.fillStyle='#263b32';ctx.fillRect(0,0,320,160);ctx.fillStyle='#ecf2dd';ctx.font='bold 24px sans-serif';ctx.fillText('Ember Page synthetic',24,85);
  const image=canvas.toDataURL('image/webp',.8);
- const prose='This is an explicitly published synthetic article for validating MeshCache transport. It contains original test prose and an original canvas illustration, with no copied publication. ';
- copy=await encodeArticle({url:'https://example.com/meshcache-first-release/'+runId,title:'Synthetic MeshCache verification '+runId,byline:'MeshCache test fixture',capturedAt:Date.now(),content:'<article><h1>Synthetic transport verification</h1><p>'+prose.repeat(30)+'</p><figure><img src="'+image+'" alt="Original synthetic illustration"></figure></article>'});
- network=new MeshNetwork({identity:async()=>secret});
+ const prose='This is an explicitly published synthetic article for validating Ember Page transport. It contains original test prose and an original canvas illustration, with no copied publication. ';
+ copy=await encodeArticle({url:'https://example.com/emberpage-first-release/'+runId,title:'Synthetic Ember Page verification '+runId,byline:'Ember Page test fixture',capturedAt:Date.now(),content:'<article><h1>Synthetic transport verification</h1><p>'+prose.repeat(30)+'</p><figure><img src="'+image+'" alt="Original synthetic illustration"></figure></article>'});
+ network=new EmberNetwork({identity:async()=>secret});
  const publish=network.directory.publish.bind(network.directory);
  network.directory.publish=async event=>{await window.persistEvent({id:event.id,kind:event.kind});return publish(event);};
  return {runId,secretKey:[...secret],blobHash:copy.blobHash,contentHash:copy.contentHash,urlHash:copy.urlHash,size:copy.size};
@@ -37,14 +37,14 @@ window.upload=()=>network.upload(copy);
 window.list=receipt=>network.publishListing(copy,receipt);
 window.vote=()=>network.publishVote({urlHash:copy.urlHash,contentHash:copy.contentHash,value:1});
 window.read=async listing=>{
- const fresh=new MeshNetwork({identity:async()=>{throw new Error('Reader requested a signing key');}});
+ const fresh=new EmberNetwork({identity:async()=>{throw new Error('Reader requested a signing key');}});
  const fetched=await fresh.readArticle(listing,{budget:{remainingBytes:16*1024*1024}});
  const candidates=await filterCandidates([{...fetched,listedAt:listing.createdAt}],{inspect:inspectArticle});
  const parsed=document.createElement('div');parsed.innerHTML=candidates[0]?.article.content||'';
  return {size:fetched.size,blobHash:fetched.blobHash,contentHash:fetched.contentHash,eligible:candidates.length===1,images:parsed.querySelectorAll('img').length,allImagesInline:[...parsed.querySelectorAll('img')].every(img=>img.getAttribute('src').startsWith('data:image/webp;base64,'))};
 };
 window.discover=async(id,target)=>{
- const fresh=new MeshNetwork({identity:async()=>{throw new Error('Reader requested a signing key');}});
+ const fresh=new EmberNetwork({identity:async()=>{throw new Error('Reader requested a signing key');}});
  const listings=await fresh.queryListings();const votes=await fresh.queryVotes([target]);
  return {listingPresent:listings.some(item=>item.id===id),validListings:listings.length,votes:votes.filter(item=>item.contentHash===target.contentHash).map(item=>({id:item.id,value:item.value}))};
 };
@@ -54,7 +54,7 @@ window.exact=async id=>{
 };
 window.cleanup=async ids=>{
  const out={};
- const event=finalizeEvent({kind:5,created_at:Math.floor(Date.now()/1000),tags:ids.map(id=>['e',id]),content:'Remove my explicitly synthetic MeshCache verification events'},secret);
+ const event=finalizeEvent({kind:5,created_at:Math.floor(Date.now()/1000),tags:ids.map(id=>['e',id]),content:'Remove my explicitly synthetic Ember Page verification events'},secret);
  await window.persistEvent({id:event.id,kind:5});
  if(ids.length){try{out.deletionAck=await network.directory.publish(event);}catch(error){out.deletionError=error.message;}}
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),20000);
@@ -79,7 +79,7 @@ async function operation(name, fn) {
 }
 try {
  const extension=join(temporary,'extension');await mkdir(extension);
- await writeFile(join(extension,'manifest.json'),JSON.stringify({manifest_version:3,name:'MeshCache explicit synthetic verification',version:'0.0.1',host_permissions:['https://blossom.primal.net/*','https://media.primal.net/*'],content_security_policy:{extension_pages:"script-src 'self'; object-src 'self'; connect-src https://blossom.primal.net https://media.primal.net wss://relay.primal.net"},background:{service_worker:'background.js'}}));
+ await writeFile(join(extension,'manifest.json'),JSON.stringify({manifest_version:3,name:'Ember Page explicit synthetic verification',version:'0.0.1',host_permissions:['https://blossom.primal.net/*','https://media.primal.net/*'],content_security_policy:{extension_pages:"script-src 'self'; object-src 'self'; connect-src https://blossom.primal.net https://media.primal.net wss://relay.primal.net"},background:{service_worker:'background.js'}}));
  await writeFile(join(extension,'background.js'),'chrome.runtime.onInstalled.addListener(()=>{});');
  await writeFile(join(extension,'test.html'),'<script src="test.js"></script>');
  await build({stdin:{contents:browserSource,resolveDir:resolve('.')},bundle:true,format:'iife',platform:'browser',outfile:join(extension,'test.js')});
@@ -89,7 +89,7 @@ try {
  author=await context.newPage();await author.goto(base+'/test.html');await author.waitForFunction(()=>window.ready);
  const preparation=await author.evaluate(()=>window.prepare());
  journal={...preparation,createdAt:new Date().toISOString(),provider:'https://blossom.primal.net',relay:'wss://relay.primal.net',events:[]};
- await mkdir(resolve('.meshcache'),{recursive:true});
+ await mkdir(resolve('.emberpage'),{recursive:true});
  await writeFile(journalPath,JSON.stringify(journal,null,2),{flag:'wx',mode:0o600});
  journalOwned=true;
  await author.exposeFunction('persistEvent',async event=>{journal.events.push(event);await writeFile(journalPath,JSON.stringify(journal,null,2),{mode:0o600});});
@@ -128,6 +128,6 @@ finally {
  await mkdir(resolve('docs/research'),{recursive:true});await writeFile(resultPath,JSON.stringify(results,null,2));
  await context?.close();await rm(temporary,{recursive:true,force:true});
  const lines=results.operations.map(item=>'- '+item.name+': '+(item.ok?'observed '+JSON.stringify(item.data):item.error));
- await writeFile(resolve('docs/research/first-release-live.md'),'# First-release synthetic transport verification\n\nDate: '+results.startedAt+'\n\nActual disposable MV3 extension origin using production MeshNetwork and plain JSON encode/decode. One original synthetic article; no copied publication. Fresh reader page has no author key.\n\n'+lines.join('\n')+'\n\n'+(results.error?'Run failed: '+results.error+'\n\n':'')+'Deletion observations concern this provider and relay at this time; they do not prove global erasure, retention duration, independent voters, or future service availability. A private recovery journal is retained whenever cleanup is unresolved.\n');
+ await writeFile(resolve('docs/research/first-release-live.md'),'# First-release synthetic transport verification\n\nDate: '+results.startedAt+'\n\nActual disposable MV3 extension origin using production EmberNetwork and plain JSON encode/decode. One original synthetic article; no copied publication. Fresh reader page has no author key.\n\n'+lines.join('\n')+'\n\n'+(results.error?'Run failed: '+results.error+'\n\n':'')+'Deletion observations concern this provider and relay at this time; they do not prove global erasure, retention duration, independent voters, or future service availability. A private recovery journal is retained whenever cleanup is unresolved.\n');
  console.log('Results:',resultPath);
 }

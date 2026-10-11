@@ -1,6 +1,6 @@
 # IPFS spikes — isolated experiments
 
-These experiments answer architecture questions. They do not change the installed MeshCache extension, publish real articles, or replace the current release plan.
+These experiments answer architecture questions. They do not change the installed Ember Page extension, publish real articles, or replace the current release plan.
 
 ## Questions and acceptance
 

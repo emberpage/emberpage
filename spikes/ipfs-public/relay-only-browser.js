@@ -24,10 +24,10 @@ const events = [];
 function record(type, detail) { events.push({ at: new Date().toISOString(), type, detail }); document.querySelector('pre').textContent = JSON.stringify(events, null, 2); }
 window.spike = {
   async start(label, relay, limits = {}, hostile = false) {
-    const datastore = new IDBDatastore(`meshcache-spike-${label}-data`); await datastore.open();
-    publicStore = new PreservationStore(`meshcache-spike-${label}-public-blocks`, datastore, limits); await publicStore.open(); if (hostile) Object.assign(publicStore.limits, { servedBytes: 64 * 1024 * 1024, servedRequests: 4096, servingConcurrency: 32 });
-    const localData = new IDBDatastore(`meshcache-spike-${label}-private-read-data`); await localData.open();
-    readStore = new ReadStore(`meshcache-spike-${label}-private-read-blocks`, localData); await readStore.open();
+    const datastore = new IDBDatastore(`emberpage-spike-${label}-data`); await datastore.open();
+    publicStore = new PreservationStore(`emberpage-spike-${label}-public-blocks`, datastore, limits); await publicStore.open(); if (hostile) Object.assign(publicStore.limits, { servedBytes: 64 * 1024 * 1024, servedRequests: 4096, servingConcurrency: 32 });
+    const localData = new IDBDatastore(`emberpage-spike-${label}-private-read-data`); await localData.open();
+    readStore = new ReadStore(`emberpage-spike-${label}-private-read-blocks`, localData); await readStore.open();
     local = createHeliaLight({ blockstore: readStore, datastore: localData }); await local.start(); readFs = unixfs(local);
     const blockstore = publicStore;
     node = withBitswap(withLibp2pLight(createHeliaLight({ blockstore, datastore }), {

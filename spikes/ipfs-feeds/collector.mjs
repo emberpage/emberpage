@@ -69,7 +69,7 @@ export function validateFeed(envelope, key, previous, now) {
   const b = envelope.body,
     digest = hash(JSON.stringify(b));
   if (
-    b.format !== "meshcache.feed.spike" ||
+    b.format !== "emberpage.feed.spike" ||
     !Number.isSafeInteger(b.sequence) ||
     b.sequence < 1
   )
@@ -189,7 +189,7 @@ export function verifySnapshot(envelope, key, now = Date.now()) {
   )
     throw Error("Snapshot observed time");
   if (
-    b.format !== "meshcache.popular.spike" ||
+    b.format !== "emberpage.popular.spike" ||
     !Number.isSafeInteger(b.generatedAt) ||
     b.generatedAt > now + 60000 ||
     b.generatedAt < now - 300000 ||
@@ -455,7 +455,7 @@ export async function collector(path, { fault } = {}) {
         do {
           next = signed(
             {
-              format: "meshcache.popular.spike",
+              format: "emberpage.popular.spike",
               generatedAt,
               observedAt,
               status: failures ? "stale" : "fresh",

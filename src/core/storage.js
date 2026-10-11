@@ -29,7 +29,7 @@ export class IndexedRecords {
         this.dbPromise = null;
         reject(
           request.error ||
-            new Error('Close other MeshCache windows to open the archive.')
+            new Error('Close other Ember Page windows to open the archive.')
         );
       };
     }));
@@ -74,7 +74,7 @@ function lru(a, b) {
 }
 export class LocalVault {
   constructor({
-    name = 'meshcache-writer-v1',
+    name = 'emberpage-writer-v1',
     indexedDB = globalThis.indexedDB,
     now = () => Date.now(),
     maxRecords = MAX_RECORDS,
@@ -252,7 +252,7 @@ export class LocalVault {
 }
 export class ShareReceipts {
   constructor({
-    name = 'meshcache-receipts-v1',
+    name = 'emberpage-receipts-v1',
     indexedDB = globalThis.indexedDB,
     maxRecords = 20,
     maxBytes = 256 * 1024

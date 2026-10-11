@@ -535,7 +535,7 @@ const scenarios = [
       await popup.evaluate(
         (hash) =>
           new Promise((resolve, reject) => {
-            const request = indexedDB.open('meshcache-writer-v1', 1);
+            const request = indexedDB.open('emberpage-writer-v1', 1);
             request.onerror = () => reject(request.error);
             request.onsuccess = () => {
               const db = request.result,
@@ -744,7 +744,7 @@ if (process.env.RUN_TEST_DRIVES !== '1') {
     .createHash('sha256')
     .update(await readFile('.output/chrome-mv3/background.js'))
     .digest('hex');
-  directory = await mkdtemp(join(tmpdir(), 'meshcache-test-drives-'));
+  directory = await mkdtemp(join(tmpdir(), 'emberpage-test-drives-'));
   const icon = await readFile('public/icons/icon-128.png');
   fixtureServer = createServer((request, response) => {
     if (request.url === '/image.png') {

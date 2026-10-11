@@ -32,7 +32,7 @@ A private recovery journal containing only the disposable key and test hashes wa
 
 ## Decision
 
-Primal Blossom is now technically demonstrated for unchanged MeshCache packet JSON at approximately 138 KB and 483 KB, with a separate successful 2 MiB transfer. Nostr metadata plus Blossom body storage is a credible way to avoid client-side chunking. It would still add a second service dependency; the aggregator can remain metadata-only and independent.
+Primal Blossom is now technically demonstrated for unchanged Ember Page packet JSON at approximately 138 KB and 483 KB, with a separate successful 2 MiB transfer. Nostr metadata plus Blossom body storage is a credible way to avoid client-side chunking. It would still add a second service dependency; the aggregator can remain metadata-only and independent.
 
 Before production selection, establish workload policy, actual per-key/IP quotas, retention, and the deletion timeout behavior. This small test does not qualify the public service for sustained encrypted article caching or promise that its published media allowance applies unchanged.
 

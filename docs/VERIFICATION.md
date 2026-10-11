@@ -1,4 +1,4 @@
-# MeshCache first-release verification
+# Ember Page first-release verification
 
 Verified locally on 2026-10-11. No extension-store release or public aggregator deployment was performed.
 

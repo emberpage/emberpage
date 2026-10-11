@@ -21,7 +21,7 @@ function child(port, database) {
   );
 }
 test("scoped aggregator runtime handles SIGTERM, aborts its scheduled query and exits cleanly", async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), "meshcache-runtime-"));
+  const directory = await mkdtemp(join(tmpdir(), "emberpage-runtime-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const reservation = await listening(),
     port = reservation.address().port;
@@ -60,7 +60,7 @@ test("scoped aggregator runtime handles SIGTERM, aborts its scheduled query and 
   await new Promise((resolve) => rebound.close(resolve));
 });
 test("startup bind failure closes acquired resources and reports the local port conflict", async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), "meshcache-runtime-"));
+  const directory = await mkdtemp(join(tmpdir(), "emberpage-runtime-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const occupied = await listening();
   t.after(() => new Promise((resolve) => occupied.close(resolve)));

@@ -18,8 +18,8 @@ const events = [];
 function record(type, detail) { events.push({ at: new Date().toISOString(), type, detail }); document.querySelector('pre').textContent = JSON.stringify(events, null, 2); }
 window.spike = {
   async start(label, relay) {
-    const blockstore = new IDBBlockstore(`meshcache-spike-${label}-blocks`);
-    const datastore = new IDBDatastore(`meshcache-spike-${label}-data`);
+    const blockstore = new IDBBlockstore(`emberpage-spike-${label}-blocks`);
+    const datastore = new IDBDatastore(`emberpage-spike-${label}-data`);
     await blockstore.open(); await datastore.open();
     node = withBitswap(withLibp2pLight(createHeliaLight({ blockstore, datastore }), {
       addresses: { listen: [`${relay}/p2p-circuit`, '/webrtc'] },

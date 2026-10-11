@@ -17,7 +17,7 @@ import { multiaddr } from "@multiformats/multiaddr";
 import { node } from "./node.mjs";
 import { signed, identity } from "./collector.mjs";
 import { quota, boundStores, usage } from "./quotas.mjs";
-const scratch = await mkdtemp(join(tmpdir(), "meshcache-ipfs-gates-")),
+const scratch = await mkdtemp(join(tmpdir(), "emberpage-ipfs-gates-")),
   checks = [],
   publisher = await node(),
   peers = [],
@@ -94,7 +94,7 @@ async function publish(sequence, title) {
     };
   const envelope = signed(
       {
-        format: "meshcache.feed.spike",
+        format: "emberpage.feed.spike",
         sequence,
         updatedAt: now,
         events: [event],

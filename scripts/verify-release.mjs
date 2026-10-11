@@ -8,6 +8,8 @@ const manifest = JSON.parse(
   await readFile(join(output, "manifest.json"), "utf8"),
 );
 assert.equal(manifest.version, pkg.version);
+assert.equal(manifest.name, "Ember Page");
+assert.equal(manifest.action.default_title, "Ember Page");
 assert.equal(manifest.manifest_version, 3);
 assert.deepEqual([...manifest.permissions].sort(), [
   "activeTab",

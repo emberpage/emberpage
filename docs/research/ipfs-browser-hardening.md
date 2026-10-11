@@ -1,6 +1,6 @@
 # IPFS browser hardening spike
 
-2026-10-11. **Final stable hardening and native transfer regression passed.** Production MeshCache is unchanged. Separate Chrome profiles use IndexedDB, Bitswap, and WebRTC through a localhost relay. Public Internet reachability and anonymity are not established.
+2026-10-11. **Final stable hardening and native transfer regression passed.** Production Ember Page is unchanged. Separate Chrome profiles use IndexedDB, Bitswap, and WebRTC through a localhost relay. Public Internet reachability and anonymity are not established.
 
 Evidence: [55 hardening steps](ipfs-browser-hardening.json), [19 native regression steps](ipfs-browser-spike.json), [finite flood](ipfs-browser-flood.json). Hardening bundle SHA-256: `edcfa16a1676bbb63e1648df275f4c20fcca3aaab7914af9178a16ba687fc5fc`; the runner asserts an unchanged bundle during its run.
 

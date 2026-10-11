@@ -109,17 +109,11 @@ a {
   letter-spacing: -0.7px;
 }
 .logo {
+  display: block;
   width: 32px;
   height: 32px;
-  background: var(--teal);
-  color: #fff;
-  border-radius: 8px;
-  font-size: 28px;
-  line-height: 28px;
-  text-align: center;
-  font-weight: 700;
-  letter-spacing: -3px;
-  padding-right: 3px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .sidebar-description {
   margin: 15px 0 32px;

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 const relay = (await (await fetch("http://127.0.0.1:4328/relay.json")).json())
   .relay;
-const directory = await mkdtemp(join(tmpdir(), "meshcache-ipfs-repeat-")),
+const directory = await mkdtemp(join(tmpdir(), "emberpage-ipfs-repeat-")),
   contexts = [];
 const evidence = {
   at: new Date().toISOString(),

@@ -8,7 +8,7 @@ import {DISCOVERY_WINDOW_MS} from '../src/network/nostr.js';
 import {listing,vote} from './aggregator-fixture.js';
 
 test('SQLite persists bounded public fields only and deduplicates signed event ids across refreshes',async()=>{
-  const now=Date.now(),dir=mkdtempSync(join(tmpdir(),'meshcache-index-')),path=join(dir,'index.sqlite');let store;
+  const now=Date.now(),dir=mkdtempSync(join(tmpdir(),'emberpage-index-')),path=join(dir,'index.sqlite');let store;
   try{
     store=new AggregatorStore({path,now:()=>now});
     const item=await listing(now,{content:'PRIVATE BODY',textContent:'PRIVATE TEXT',privateKey:'PRIVATE KEY'}),rating=vote(item,{body:'PRIVATE BODY'});

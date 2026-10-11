@@ -1,4 +1,4 @@
-# Blossom providers for MeshCache article packets
+# Blossom providers for Ember Page article packets
 
 Checked 2026-10-11, approximately 08:20–08:27 UTC. Sources below are protocol specifications, operator sites, operator source code, and read-only HTTP responses. No upload, mirror, deletion, account creation, signing, or publishing was performed.
 
@@ -8,7 +8,7 @@ Checked 2026-10-11, approximately 08:20–08:27 UTC. Sources below are protocol 
 
 **No examined public service is yet confirmed to accept this workload under its deployed rules and policies. Primal is a technical candidate for the exact existing encrypted JSON envelope, with important policy and deployment unknowns.** Do not turn protocol-level binary support into a provider guarantee.
 
-The proposed bytes are `JSON.stringify(packet)`, whose payload is gzip-compressed then encrypted, with ciphertext encoded inside JSON. They are not a raw ciphertext file or a gzip file. A local packet made by the current `encryptArticle()` and piped to macOS `file --mime-type -` reported `application/json`. No network upload occurred. That supports investigating Primal's JSON path without changing MeshCache's packet format; it does not prove its production detector or account rules will accept a 138,240-byte or 680,000-byte packet.
+The proposed bytes are `JSON.stringify(packet)`, whose payload is gzip-compressed then encrypted, with ciphertext encoded inside JSON. They are not a raw ciphertext file or a gzip file. A local packet made by the current `encryptArticle()` and piped to macOS `file --mime-type -` reported `application/json`. No network upload occurred. That supports investigating Primal's JSON path without changing Ember Page's packet format; it does not prove its production detector or account rules will accept a 138,240-byte or 680,000-byte packet.
 
 ## Providers and policy
 
@@ -54,9 +54,9 @@ These observations are evidence of live endpoints and preflight behavior, **not 
 
 ## Protocol, browser access, and account UX
 
-[BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md) requires byte-preserving binary upload and a hash/size/type descriptor, but explicitly allows unsupported-media, payment, quota and policy rejection. Use `/upload`, not `/media`, which can transform media. Hash the exact serialized envelope bytes for Blossom; MeshCache's inner plaintext payload hash is a different identity.
+[BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md) requires byte-preserving binary upload and a hash/size/type descriptor, but explicitly allows unsupported-media, payment, quota and policy rejection. Use `/upload`, not `/media`, which can transform media. Hash the exact serialized envelope bytes for Blossom; Ember Page's inner plaintext payload hash is a different identity.
 
-[BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md) uses signed kind-24242 Nostr authorization: action, expiration, blob hash and optionally server scope. Current specification uses unpadded base64url. Older deployed implementations may differ. A locally generated signing identity can avoid a signup screen where the operator permits it; authorization is still a linkable public-key identity. Nostr's [signature format](https://github.com/nostr-protocol/nips/blob/master/01.md) differs from MeshCache's existing P-256 rating keys, so those keys cannot simply be reused.
+[BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md) uses signed kind-24242 Nostr authorization: action, expiration, blob hash and optionally server scope. Current specification uses unpadded base64url. Older deployed implementations may differ. A locally generated signing identity can avoid a signup screen where the operator permits it; authorization is still a linkable public-key identity. Nostr's [signature format](https://github.com/nostr-protocol/nips/blob/master/01.md) differs from Ember Page's existing P-256 rating keys, so those keys cannot simply be reused.
 
 [BUD-01](https://github.com/hzrd149/blossom/blob/master/buds/01.md) specifies permissive browser CORS, including redirect destinations; current probes establish only part of that surface. [Chrome documentation](https://developer.chrome.com/docs/extensions/develop/concepts/network-requests) distinguishes CORS-limited requests from privileged extension requests with host permissions. `activeTab` on the publisher is not permission for a storage provider. Narrow provider permissions, redirect destinations, credentials-omitted fetch behavior and error paths need explicit browser verification; this research makes no manifest change.
 
@@ -64,7 +64,7 @@ These observations are evidence of live endpoints and preflight behavior, **not 
 
 ## Expiry, mirrors, and costs
 
-The authorization event's expiration expires the token, **not the stored blob**. No examined provider established client-selected absolute 24-hour storage expiry. [BUD-01's optional Sunset header](https://github.com/hzrd149/blossom/blob/master/buds/01.md#sunset-header-optional) is advisory, not guaranteed erasure. MeshCache can reject old pointers locally but cannot thereby promise remote deletion.
+The authorization event's expiration expires the token, **not the stored blob**. No examined provider established client-selected absolute 24-hour storage expiry. [BUD-01's optional Sunset header](https://github.com/hzrd149/blossom/blob/master/buds/01.md#sunset-header-optional) is advisory, not guaranteed erasure. Ember Page can reject old pointers locally but cannot thereby promise remote deletion.
 
 [BUD-04](https://github.com/hzrd149/blossom/blob/master/buds/04.md) allows signed server-side mirrors and policy rejection. [BUD-12](https://github.com/hzrd149/blossom/blob/master/buds/12.md) defines deletion endpoints; it does not make deletion global across mirrors, caches or other owners. More providers increase requests and expose upload identity/IP to more operators. No cost-per-article, sustained free throughput, or abuse-safe mass-storage commitment was established.
 

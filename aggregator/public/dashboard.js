@@ -7,7 +7,7 @@ function status(text, error = false) {
   $('#status').classList.toggle('error', error);
 }
 async function api(path, method = 'GET') {
-  const response = await fetch(path, { method, cache: 'no-store', ...(method === 'POST' ? { headers: { 'X-MeshCache-Action': 'refresh' } } : {}) });
+  const response = await fetch(path, { method, cache: 'no-store', ...(method === 'POST' ? { headers: { 'X-EmberPage-Action': 'refresh' } } : {}) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || `The local aggregator returned ${response.status}.`);
   return data;

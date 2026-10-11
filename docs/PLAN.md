@@ -1,4 +1,4 @@
-# MeshCache: fresh first-release plan
+# Ember Page: fresh first-release plan
 
 Implemented 2026-10-11. This is the first-release architecture; see [verification](VERIFICATION.md) for acceptance evidence. The original garden plan remains private historical context.
 
@@ -26,7 +26,7 @@ Upload UTF-8 `application/json` through Blossom **PUT /upload**, which preserves
 
 ```json
 {
-  "format": "meshcache.article",
+  "format": "emberpage.article",
   "version": 1,
   "article": {
     "url": "https://example.org/article",
@@ -54,7 +54,7 @@ Accept bounded, inert optional fields in version 1; never render them as code or
 
 ## Small Nostr metadata
 
-Use locally generated, per-install signing keys. No wallet, account, or login UI. Persist the key separately from evictable caches; clearing article caches must not delete it. The same key can sign Blossom authorization and MeshCache events. Blossom authorization is sent over HTTP and does not require publishing it to a relay. [BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md).
+Use locally generated, per-install signing keys. No wallet, account, or login UI. Persist the key separately from evictable caches; clearing article caches must not delete it. The same key can sign Blossom authorization and Ember Page events. Blossom authorization is sent over HTTP and does not require publishing it to a relay. [BUD-11](https://github.com/hzrd149/blossom/blob/master/buds/11.md).
 
 Define two small, namespaced event contracts: **article listing** and **rating**. Freeze their experimental kinds and indexed tags in one protocol document before implementation; avoid claiming unregistered kinds are standards.
 

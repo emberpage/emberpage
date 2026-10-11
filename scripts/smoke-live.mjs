@@ -7,8 +7,8 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 
 const live = process.env.LIVE_UI_SMOKE === '1';
-const temporary = await mkdtemp(join(tmpdir(), 'meshcache-live-ui-'));
-const journalPath = resolve('.meshcache/live-ui-cleanup.json');
+const temporary = await mkdtemp(join(tmpdir(), 'emberpage-live-ui-'));
+const journalPath = resolve('.emberpage/live-ui-cleanup.json');
 const resultPath = resolve('docs/research/live-ui.json');
 const results = { startedAt: new Date().toISOString(), live, steps: [] };
 const contexts = [];
@@ -22,7 +22,7 @@ import {encodeArticle} from './src/core/article.js';
 import {snapshotSealInput} from './src/preview.js';
 import {sha256} from './src/core/article.js';
 import {sanitizeArticle} from './src/sanitize.js';
-import {MeshNetwork,createBlossomAuthorization,PROVIDER} from './src/mesh.ts';
+import {EmberNetwork,createBlossomAuthorization,PROVIDER} from './src/network.ts';
 import {NostrDirectory} from './src/network/nostr.js';
 window.installJournal=()=>chrome.runtime.onMessage.addListener((message,sender,respond)=>{
  if(message.target!=='live-ui-journal')return;
@@ -33,21 +33,21 @@ window.prepare=async()=>{
  const icon=new Image();icon.src=chrome.runtime.getURL('icons/icon-128.png');await icon.decode();
  const canvas=document.createElement('canvas');canvas.width=canvas.height=128;canvas.getContext('2d').drawImage(icon,0,0);
  const image=canvas.toDataURL('image/webp',.8);
- const article={url:'https://example.org/meshcache-test-'+id,title:'Original synthetic MeshCache UI test '+id,byline:'MeshCache test fixture',capturedAt:Date.now(),
- content:'<p>'+('This original synthetic article tests explicit sharing and independent reading. The observations are test prose, not a real publication. ').repeat(30)+'</p><figure><img src="'+image+'" alt="MeshCache synthetic illustration"></figure>'};
+ const article={url:'https://example.org/emberpage-test-'+id,title:'Original synthetic Ember Page UI test '+id,byline:'Ember Page test fixture',capturedAt:Date.now(),
+ content:'<p>'+('This original synthetic article tests explicit sharing and independent reading. The observations are test prose, not a real publication. ').repeat(30)+'</p><figure><img src="'+image+'" alt="Ember Page synthetic illustration"></figure>'};
  article.content=sanitizeArticle(article.content,article.url);article.textContent='Original synthetic preview';
  const copy=await encodeArticle(article);
  const hex=bytes=>[...bytes].map(byte=>byte.toString(16).padStart(2,'0')).join('');
- await chrome.storage.local.set({meshcacheSigningKey:hex(key)});
+ await chrome.storage.local.set({emberpageSigningKey:hex(key)});
  await chrome.storage.session.set({['draft:'+id]:article,['seal:'+id]:await sha256(snapshotSealInput(article))});
  return {id,title:article.title,blobHash:copy.blobHash,contentHash:copy.contentHash,urlHash:copy.urlHash,size:copy.size,
  authorKey:hex(key),authorPubkey:getPublicKey(key),readerKey:hex(readerKey),readerPubkey:getPublicKey(readerKey)};
 };
-window.seedReader=key=>chrome.storage.local.set({meshcacheSigningKey:key});
+window.seedReader=key=>chrome.storage.local.set({emberpageSigningKey:key});
 window.cleanup=async(ids,hash)=>{
- const stored=(await chrome.storage.local.get('meshcacheSigningKey')).meshcacheSigningKey;
+ const stored=(await chrome.storage.local.get('emberpageSigningKey')).emberpageSigningKey;
  const secret=Uint8Array.from(stored.match(/../g),byte=>parseInt(byte,16)),directory=new NostrDirectory();const outcome={};
- if(ids.length){const event=finalizeEvent({kind:5,created_at:Math.floor(Date.now()/1000),tags:ids.map(id=>['e',id]),content:'Remove my synthetic MeshCache UI test'},secret);
+ if(ids.length){const event=finalizeEvent({kind:5,created_at:Math.floor(Date.now()/1000),tags:ids.map(id=>['e',id]),content:'Remove my synthetic Ember Page UI test'},secret);
  try{await directory.publish(event);outcome.deletionAck=true;}catch(error){outcome.deletionError=error.message;}}
  if(hash){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
  try{const response=await fetch(PROVIDER+'/'+hash,{method:'DELETE',headers:{Authorization:createBlossomAuthorization(secret,{action:'delete',blobHash:hash})},credentials:'omit',redirect:'error',signal:controller.signal});outcome.blobDeleteStatus=response.status;await response.body?.cancel();}
@@ -187,7 +187,7 @@ try {
       createdAt: new Date().toISOString(),
       events: []
     };
-    await mkdir(resolve('.meshcache'), { recursive: true });
+    await mkdir(resolve('.emberpage'), { recursive: true });
     await writeFile(journalPath, JSON.stringify(journal, null, 2), {
       flag: 'wx',
       mode: 0o600

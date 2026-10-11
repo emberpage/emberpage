@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 const relay = (await (await fetch('http://127.0.0.1:4328/relay.json')).json()).relay;
-const profile = await mkdtemp(join(tmpdir(), 'meshcache-ipfs-spike-'));
+const profile = await mkdtemp(join(tmpdir(), 'emberpage-ipfs-spike-'));
 const contexts = [];
 const buildHash = createHash('sha256').update(await readFile('dist/browser.js')).digest('hex');
 const evidence = { buildHash, at: new Date().toISOString(), relay, scope: 'Real Chrome/WebRTC hostile peer tests, private/public consent and resource policy; localhost relay only.', steps: [], requests: [] };

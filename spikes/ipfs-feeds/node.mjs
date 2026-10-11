@@ -26,7 +26,7 @@ export async function node({
         keychain: keychain(),
         dht: kadDHT({
           clientMode: false,
-          protocol: "/meshcache/spike/kad/1.0.0",
+          protocol: "/emberpage/spike/kad/1.0.0",
           peerInfoMapper: (p) => p,
           allowQueryWithZeroPeers: true,
         }),

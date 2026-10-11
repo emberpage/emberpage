@@ -190,7 +190,7 @@ try {
     throw Error("Public tunnel readiness failed after 80 seconds");
   });
   const address = `/dns4/${host}/tcp/443/wss/p2p/${relay.peerId}`;
-  directory = await mkdtemp(join(tmpdir(), "meshcache-ipfs-external-"));
+  directory = await mkdtemp(join(tmpdir(), "emberpage-ipfs-external-"));
   http = createServer(async (req, res) => {
     if (req.url === "/browser.js") {
       res.setHeader("Content-Type", "text/javascript");
@@ -210,7 +210,7 @@ try {
   const bytes = Buffer.from(
     JSON.stringify({
       synthetic: true,
-      title: "Disposable MeshCache external test",
+      title: "Disposable Ember Page external test",
       body: randomBytes(24000).toString("hex"),
     }),
   );

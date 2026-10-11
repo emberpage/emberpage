@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import packageInfo from "../package.json" with { type: "json" };
 import { Effect, Predicate, Schema } from "effect";
 import { AggregatorStore } from "./store.js";
 import { createAggregatorServer, type AggregatorServer } from "./server.ts";
@@ -28,7 +29,7 @@ const { values } = parseArgs({
     database: {
       type: "string",
       short: "d",
-      default: new URL("../.meshcache/aggregator-nostr.sqlite", import.meta.url)
+      default: new URL("../.emberpage/aggregator-nostr.sqlite", import.meta.url)
         .pathname,
     },
     interval: { type: "string", short: "i", default: "60" },
@@ -115,7 +116,7 @@ const run = Effect.scoped(
     yield* listen(server, options.port);
     yield* Effect.sync(() => {
       console.log(
-        `MeshCache dashboard: http://127.0.0.1:${options.port}\nRolling metadata indexing every ${options.interval}s; no article bodies stored or served.`,
+        `Ember Page dashboard: http://127.0.0.1:${options.port}\nRolling metadata indexing every ${options.interval}s; no article bodies stored or served.`,
       );
       server.indexer.startScheduler();
     });
@@ -124,9 +125,9 @@ const run = Effect.scoped(
 );
 if (values.help)
   console.log(
-    "MeshCache local metadata aggregator\n\nUsage: npm run aggregator -- [options]\n\n--port, -p       Local port (default: 4318)\n--database, -d   SQLite file (default: .meshcache/aggregator-nostr.sqlite)\n--interval, -i   Seconds between completed indexing runs (default: 60, minimum: 30)\n--version, -v    Print version\n--help, -h       Show help\n\nBinds only 127.0.0.1. Queries Nostr metadata; never publishes or retrieves article bodies.",
+    "Ember Page local metadata aggregator\n\nUsage: pnpm aggregator [options]\n\n--port, -p       Local port (default: 4318)\n--database, -d   SQLite file (default: .emberpage/aggregator-nostr.sqlite)\n--interval, -i   Seconds between completed indexing runs (default: 60, minimum: 30)\n--version, -v    Print version\n--help, -h       Show help\n\nBinds only 127.0.0.1. Queries Nostr metadata; never publishes or retrieves article bodies.",
   );
-else if (values.version) console.log("0.1.0");
+else if (values.version) console.log(packageInfo.version);
 else
   await Effect.runPromise(
     run.pipe(

@@ -13,8 +13,10 @@ Verification passed:
 - Production WXT build and manifest/entrypoint verification.
 - Actual extension smoke and local dashboard smoke at 360/800/1280 pixels.
 - Twenty sequential browser edge cases on the final build; see `TEST-DRIVE.md` and the locally generated `artifacts/test-drive-results.json`.
-- Visible Chrome via Codex computer use: native Extensions → MeshCache button, Get started → Cache → Preview this article → Cache only for me → Read saved copy. The production manifest had no added host permissions. The synthetic article's cross-origin local image appeared in both preview and reader. This verifies that path with the real toolbar activeTab gesture, not every publisher/image condition.
+- Visible Chrome via Codex computer use: native Extensions → Ember Page button, Get started → Cache → Preview this article → Cache only for me → Read saved copy. The production manifest had no added host permissions. The synthetic article's cross-origin local image appeared in both preview and reader. This verifies that path with the real toolbar activeTab gesture, not every publisher/image condition.
 
 The separate image smoke also passed with its documented disposable screenshot-permission harness. That harness alone does not prove a real toolbar grant. No live publication test was repeated for this tooling migration.
 
 The GitHub workflow runs verification and publishes tested ZIPs/checksums from matching version tags. Chrome Web Store publication and public dashboard hosting are not configured. See `RELEASING.md`.
+
+The subsequent Ember Page 0.1.1 rebrand starts fresh storage, signing-key, article-format, and discovery namespaces at the user's request. This supersedes namespace continuity from the tooling-only migration described above. Historical signed evidence remains unchanged.

@@ -1,6 +1,6 @@
 # IPFS architecture spike: storage, serving, and discovery
 
-Investigated 2026-10-11. This note is primary-source architecture research, not a claim of successful Internet retrieval. The separate executable spike reports own measured results. Production MeshCache is unchanged.
+Investigated 2026-10-11. This note is primary-source architecture research, not a claim of successful Internet retrieval. The separate executable spike reports own measured results. Production Ember Page is unchanged.
 
 ## Finding
 

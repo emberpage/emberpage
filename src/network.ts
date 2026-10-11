@@ -46,7 +46,7 @@ const receiptSchema = Schema.Struct({
 let identityPromise: Promise<Uint8Array> | null = null;
 async function installationIdentity(): Promise<Uint8Array> {
   return (identityPromise ??= (async () => {
-    const key = "meshcacheSigningKey";
+    const key = "emberpageSigningKey";
     const stored: unknown = (await chrome.storage.local.get(key))[key];
     if (stored !== undefined) {
       if (typeof stored !== "string" || !HASH.test(stored))
@@ -89,14 +89,14 @@ export function createBlossomAuthorization(
         ["server", "blossom.primal.net"],
         ["expiration", String(Math.floor(now / 1000) + 120)],
       ],
-      content: `${action === "upload" ? "Upload" : "Delete"} one MeshCache article file`,
+      content: `${action === "upload" ? "Upload" : "Delete"} one Ember Page article file`,
     },
     secretKey,
   );
   return `Nostr ${btoa(String.fromCharCode(...encoder.encode(JSON.stringify(event))))}`;
 }
 
-const responseBytes = Effect.fn("MeshNetwork.responseBytes")(function* (
+const responseBytes = Effect.fn("EmberNetwork.responseBytes")(function* (
   response: Response,
   maximum: number,
   budget?: { remainingBytes: number },
@@ -152,7 +152,7 @@ interface NetworkOptions {
 }
 
 /** One explicit provider and directory; acquisition scopes own cancellation. */
-export class MeshNetwork {
+export class EmberNetwork {
   readonly fetch: typeof globalThis.fetch;
   readonly identity: () => Promise<Uint8Array>;
   readonly now: () => number;
@@ -171,8 +171,8 @@ export class MeshNetwork {
     this.timeoutMs = timeoutMs;
     this.directory = new NostrDirectory({ WebSocket, now });
   }
-  private request = Effect.fn("MeshNetwork.request")(function* (
-    this: MeshNetwork,
+  private request = Effect.fn("EmberNetwork.request")(function* (
+    this: EmberNetwork,
     url: string,
     init: RequestInit,
     maximum: number,
@@ -212,8 +212,8 @@ export class MeshNetwork {
       ),
     );
   });
-  uploadEffect = Effect.fn("MeshNetwork.upload")(function* (
-    this: MeshNetwork,
+  uploadEffect = Effect.fn("EmberNetwork.upload")(function* (
+    this: EmberNetwork,
     copy: ArticleCopy,
   ): Effect.fn.Return<UploadReceipt, NetworkError> {
     const verified: ArticleCopy = yield* io(() =>
@@ -278,8 +278,8 @@ export class MeshNetwork {
       provider: PROVIDER,
     };
   });
-  publishListingEffect = Effect.fn("MeshNetwork.publishListing")(function* (
-    this: MeshNetwork,
+  publishListingEffect = Effect.fn("EmberNetwork.publishListing")(function* (
+    this: EmberNetwork,
     copy: ArticleCopy,
     receipt: UploadReceipt,
   ): Effect.fn.Return<Listing, NetworkError> {
@@ -330,15 +330,15 @@ export class MeshNetwork {
     yield* io((signal) => this.directory.publish(event, signal));
     return listing;
   });
-  publishArticleEffect = Effect.fn("MeshNetwork.publishArticle")(function* (
-    this: MeshNetwork,
+  publishArticleEffect = Effect.fn("EmberNetwork.publishArticle")(function* (
+    this: EmberNetwork,
     copy: ArticleCopy,
   ) {
     const receipt = yield* this.uploadEffect(copy);
     return yield* this.publishListingEffect(copy, receipt);
   });
-  readArticleEffect = Effect.fn("MeshNetwork.readArticle")(function* (
-    this: MeshNetwork,
+  readArticleEffect = Effect.fn("EmberNetwork.readArticle")(function* (
+    this: EmberNetwork,
     listing: Listing,
     { budget }: { budget?: { remainingBytes: number } } = {},
   ): Effect.fn.Return<ArticleCopy, NetworkError> {
@@ -381,19 +381,19 @@ export class MeshNetwork {
         );
     return copy;
   });
-  queryListingsEffect = Effect.fn("MeshNetwork.queryListings")(function* (
-    this: MeshNetwork,
+  queryListingsEffect = Effect.fn("EmberNetwork.queryListings")(function* (
+    this: EmberNetwork,
   ): Effect.fn.Return<Listing[], NetworkError> {
     return yield* io((signal) => this.directory.queryListings(signal));
   });
-  queryVotesEffect = Effect.fn("MeshNetwork.queryVotes")(function* (
-    this: MeshNetwork,
+  queryVotesEffect = Effect.fn("EmberNetwork.queryVotes")(function* (
+    this: EmberNetwork,
     targets: RatingTarget[],
   ): Effect.fn.Return<Vote[], NetworkError> {
     return yield* io((signal) => this.directory.queryVotes(targets, signal));
   });
-  publishVoteEffect = Effect.fn("MeshNetwork.publishVote")(function* (
-    this: MeshNetwork,
+  publishVoteEffect = Effect.fn("EmberNetwork.publishVote")(function* (
+    this: EmberNetwork,
     value: RatingTarget & { value: number },
   ): Effect.fn.Return<Vote, NetworkError> {
     if (

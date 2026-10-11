@@ -27,7 +27,7 @@ import {
 const checks = [],
   now = Date.now(),
   hash = (s) => createHash("sha256").update(s).digest("hex"),
-  scratch = await mkdtemp(join(tmpdir(), "meshcache-ipfs-feeds-")),
+  scratch = await mkdtemp(join(tmpdir(), "emberpage-ipfs-feeds-")),
   owner = identity(),
   bodyNode = await node();
 let publisher = bodyNode,
@@ -121,7 +121,7 @@ try {
   };
   goodFeed = signed(
     {
-      format: "meshcache.feed.spike",
+      format: "emberpage.feed.spike",
       sequence: 1,
       updatedAt: now,
       events: [event],
@@ -447,7 +447,7 @@ try {
             JSON.stringify(
               signed(
                 {
-                  format: "meshcache.feed.spike",
+                  format: "emberpage.feed.spike",
                   sequence: 1,
                   updatedAt: Date.now(),
                   events: [],

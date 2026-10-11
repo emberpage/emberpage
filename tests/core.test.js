@@ -41,7 +41,7 @@ test('normalized identity preserves meaningful queries and rejects credentials',
 test('one public JSON format uses exact blob bytes and stable content identity without expiry', async () => {
   const first = await encodeArticle(article, { now });
   assert.deepEqual(JSON.parse(new TextDecoder().decode(first.bytes)), {
-    format: 'meshcache.article',
+    format: 'emberpage.article',
     version: 1,
     article
   });
@@ -81,7 +81,7 @@ test('one public JSON format uses exact blob bytes and stable content identity w
   );
   const decorated = new TextEncoder().encode(
     JSON.stringify({
-      format: 'meshcache.article',
+      format: 'emberpage.article',
       version: 1,
       article: { ...article, provenance: { note: 'Inert optional data' } },
       optional: 'Next producer'
@@ -101,10 +101,10 @@ test('file verification rejects wrong hashes, unknown format, malformed UTF8, fu
     /hash/
   );
   for (const file of [
-    { format: 'meshcache.article', version: 2, article },
+    { format: 'emberpage.article', version: 2, article },
     { header: { version: 1 }, crypto: { encryptedData: 'old' } },
     {
-      format: 'meshcache.article',
+      format: 'emberpage.article',
       version: 1,
       article: { ...article, capturedAt: now + 60001 }
     }

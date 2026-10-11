@@ -17,8 +17,8 @@ WXT writes the unpacked Chrome extension and versioned ZIP to `.output/`. The ma
 For the next release, update the package version, commit it, then push a matching tag:
 
 ```sh
-git tag v0.1.1
-git push origin main v0.1.1
+git tag v0.1.2
+git push origin main v0.1.2
 ```
 
 GitHub Actions installs the frozen lockfile, typechecks, runs tests, builds, and drives the actual extension and local dashboard. It verifies the production manifest, packages the extension, and records ZIP SHA-256 checksums. A matching `v` tag publishes those verified artifacts as a GitHub release. A failed check prevents release publication.

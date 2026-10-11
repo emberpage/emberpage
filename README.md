@@ -1,4 +1,6 @@
-# MeshCache · Emberpage
+# Ember Page
+
+<img src="public/icons/logo.png" alt="Ember Page" width="96" height="96">
 
 A Chrome Manifest V3 extension for explicit article caching. Keep a copy on your device or share it for readers. Blossom stores article files; small signed Nostr events provide discovery and ratings. A separate localhost dashboard indexes metadata. The extension never calls the dashboard.
 

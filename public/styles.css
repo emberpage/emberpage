@@ -84,17 +84,11 @@ input {
   font-weight: 600;
 }
 .logo {
-  width: 28px;
-  height: 28px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 7px;
-  font-size: 25px;
-  line-height: 23px;
-  text-align: center;
-  font-weight: 700;
-  letter-spacing: -3px;
-  padding-right: 3px;
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .local-label {
   font-size: 12px;
@@ -445,9 +439,6 @@ hr {
   button:active,
   .secondary:hover {
     background: #45454a;
-  }
-  .logo {
-    color: #10253d;
   }
   .primary {
     background: #8fc5ff;

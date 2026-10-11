@@ -47,7 +47,7 @@ const server = createServer(async (req, res) => {
     );
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-const profile = await mkdtemp(join(tmpdir(), "meshcache-ipfs-public-"));
+const profile = await mkdtemp(join(tmpdir(), "emberpage-ipfs-public-"));
 const context = await chromium.launchPersistentContext(profile, {
   headless: true,
   executablePath:

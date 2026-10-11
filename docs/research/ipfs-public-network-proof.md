@@ -38,4 +38,4 @@ Run from the repository root with the isolated browser dependencies installed an
 
 ## Adoption gate
 
-Before changing MeshCache transport, qualify a maintained relay/routing arrangement and run the complete discover → download → preserve → original offline → fresh reader flow from independently connected machines. A relay reservation and a signed IPNS pointer are insufficient substitutes. No safe experiment can guarantee indefinite free hosting, anonymity, or future independent-holder uptime.
+Before changing Ember Page transport, qualify a maintained relay/routing arrangement and run the complete discover → download → preserve → original offline → fresh reader flow from independently connected machines. A relay reservation and a signed IPNS pointer are insufficient substitutes. No safe experiment can guarantee indefinite free hosting, anonymity, or future independent-holder uptime.

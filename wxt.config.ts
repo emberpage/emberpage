@@ -5,13 +5,13 @@ export default defineConfig({
   imports: false,
   vite: () => ({ build: { target: "chrome116", sourcemap: true } }),
   manifest: {
-    name: "MeshCache",
+    name: "Ember Page",
     description:
       "Save an article privately or share it for readers. Browse complete community copies.",
     minimum_chrome_version: "116",
     permissions: ["activeTab", "scripting", "storage", "offscreen"],
     action: {
-      default_title: "MeshCache",
+      default_title: "Ember Page",
       default_icon: { 16: "icons/icon-16.png", 32: "icons/icon-32.png" },
     },
     content_security_policy: {

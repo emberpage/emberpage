@@ -22,7 +22,7 @@ function newest(a, b) {
 /** Caller supplies signature-verified normalized Nostr votes. Keys are not human identities. */
 export class VoteLedger {
   constructor({
-    name = 'meshcache-votes-v1',
+    name = 'emberpage-votes-v1',
     indexedDB = globalThis.indexedDB,
     now = () => Date.now(),
     maxRecords = 5000,

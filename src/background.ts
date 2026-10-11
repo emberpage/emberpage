@@ -5,7 +5,7 @@ import { LocalVault, ShareReceipts } from "./core/storage.js";
 import { VoteLedger } from "./core/votes.js";
 import { CatalogLedger } from "./core/catalog.js";
 import { articleForMode, snapshotSealInput } from "./preview.js";
-import { MeshNetwork } from "./mesh.ts";
+import { EmberNetwork } from "./network.ts";
 import { ArticleArchive } from "./archive.ts";
 import type { Article, Inspection } from "./types.ts";
 
@@ -135,9 +135,9 @@ export function startBackground() {
     return reply.data;
   }
   const archive = new ArticleArchive({
-    network: new MeshNetwork(),
+    network: new EmberNetwork(),
     writer: new LocalVault(),
-    reader: new LocalVault({ name: "meshcache-reader-v1" }),
+    reader: new LocalVault({ name: "emberpage-reader-v1" }),
     catalog: new CatalogLedger(),
     votes: new VoteLedger(),
     receipts: new ShareReceipts(),
@@ -214,7 +214,7 @@ export function startBackground() {
     }
     const { accepted } = yield* io(() => chrome.storage.local.get("accepted"));
     if (!accepted)
-      return yield* reject("Open MeshCache and choose Get started first.");
+      return yield* reject("Open Ember Page and choose Get started first.");
     switch (message.action) {
       case "CAPTURE": {
         const tabId = message.tabId;
@@ -377,11 +377,11 @@ export function startBackground() {
       (sender.id !== chrome.runtime.id ||
         !sender.url?.startsWith(chrome.runtime.getURL("")))
     ) {
-      respond({ ok: false, error: "This action must come from MeshCache." });
+      respond({ ok: false, error: "This action must come from Ember Page." });
       return;
     }
     const workflow = Schema.decodeUnknownEffect(messageSchema)(input).pipe(
-      Effect.mapError(() => failure(new Error("Invalid MeshCache action."))),
+      Effect.mapError(() => failure(new Error("Invalid Ember Page action."))),
       Effect.flatMap((message) =>
         message.action === "CAPTURE_IMAGE_PIXELS"
           ? captureImagePixels(message, sender)

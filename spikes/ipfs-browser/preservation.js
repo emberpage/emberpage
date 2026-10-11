@@ -4,7 +4,7 @@ import { CID } from 'multiformats/cid';
 
 export const LIMITS = Object.freeze({ fileBytes: 2 * 1024 * 1024, preservedBytes: 16 * 1024 * 1024, preservedRecords: 100, servedBytes: 8 * 1024 * 1024, servedRequests: 128, servingConcurrency: 2, servingQueue: 2, blockBytes: 1024 * 1024, receivedBytes: 16 * 1024 * 1024 });
 export const LOCAL_ACCESS = Symbol('local block access');
-const policyKey = new Key('/meshcache/preservation-policy');
+const policyKey = new Key('/emberpage/preservation-policy');
 function reject(message) { const err = new Error(message); err.name = 'PolicyLimitError'; throw err; }
 
 // Public-only IDB is the sole Bitswap serving source. The offline/read IDB is never
@@ -85,7 +85,7 @@ export class PreservationStore extends IDBBlockstore {
 // hostile Bitswap response may already have allocated memory upstream.
 export class ReadStore extends IDBBlockstore {
   constructor(name, datastore) { super(name); this.datastore = datastore; this.receiving = null; this.bytes = 0; this.roots = []; this.rejections = {}; }
-  async open() { await super.open(); try { this.roots = JSON.parse(new TextDecoder().decode(await this.datastore.get(new Key('/meshcache/read-roots')))); } catch (err) { if (err.name !== 'NotFoundError') throw err; } for await (const { bytes } of super.getAll()) for await (const chunk of bytes) this.bytes += chunk.length; if (this.bytes > LIMITS.receivedBytes || this.roots.length > 100) this.reject('Existing read cache exceeds quota'); }
+  async open() { await super.open(); try { this.roots = JSON.parse(new TextDecoder().decode(await this.datastore.get(new Key('/emberpage/read-roots')))); } catch (err) { if (err.name !== 'NotFoundError') throw err; } for await (const { bytes } of super.getAll()) for await (const chunk of bytes) this.bytes += chunk.length; if (this.bytes > LIMITS.receivedBytes || this.roots.length > 100) this.reject('Existing read cache exceeds quota'); }
   async put(cid, bytes, options = {}) {
     const chunks = []; let length = 0; if (bytes instanceof Uint8Array) { chunks.push(bytes); length = bytes.length; } else for await (const chunk of bytes) { length += chunk.length; if (length > LIMITS.fileBytes) this.reject('Received block exceeds 2 MiB'); chunks.push(chunk); }
     if (length > LIMITS.fileBytes) this.reject('Received block exceeds 2 MiB');
@@ -96,7 +96,7 @@ export class ReadStore extends IDBBlockstore {
     }
     try { return await super.put(cid, chunks, options); } catch (err) { if (!existing) { this.bytes -= length; this.receiving?.delete(cid.toString()); } throw err; }
   }
-  async accept(cid) { if (!this.roots.includes(cid)) { if (this.roots.length >= 100) this.reject('Read cache article count full'); this.roots.push(cid); try { await this.datastore.put(new Key('/meshcache/read-roots'), new TextEncoder().encode(JSON.stringify(this.roots))); } catch (err) { this.roots = this.roots.filter(root => root !== cid); throw err; } } this.receiving = null; }
+  async accept(cid) { if (!this.roots.includes(cid)) { if (this.roots.length >= 100) this.reject('Read cache article count full'); this.roots.push(cid); try { await this.datastore.put(new Key('/emberpage/read-roots'), new TextEncoder().encode(JSON.stringify(this.roots))); } catch (err) { this.roots = this.roots.filter(root => root !== cid); throw err; } } this.receiving = null; }
   async discardReceive() { if (this.receiving) for (const [cid, bytes] of this.receiving) { await super.delete(CID.parse(cid)); this.bytes -= bytes; } this.receiving = null; }
   reject(reason) { this.rejections[reason] = (this.rejections[reason] || 0) + 1; reject(reason); }
   info() { return { bytes: this.bytes, count: this.roots.length, roots: this.roots, rejections: this.rejections }; }

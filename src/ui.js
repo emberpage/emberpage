@@ -7,7 +7,7 @@ export async function send(action, fields = {}) {
   if (!response?.ok)
     throw new Error(
       response?.error ||
-        'MeshCache did not respond. Reopen the extension and try again.'
+        'Ember Page did not respond. Reopen the extension and try again.'
     );
   return response.data;
 }

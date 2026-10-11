@@ -1,6 +1,6 @@
 # IndexedDB IPFS browser transfer spike
 
-2026-10-11. **Pass for controlled browser peers on one computer. Internet reachability, public provider discovery, and unattended availability are unproven.** Production MeshCache is unchanged.
+2026-10-11. **Pass for controlled browser peers on one computer. Internet reachability, public provider discovery, and unattended availability are unproven.** Production Ember Page is unchanged.
 
 ## What ran
 
@@ -30,7 +30,7 @@ The node uses `createHeliaLight`, `withLibp2pLight`, and `withBitswap`, avoiding
 
 The relay reconnects automatically after connection closure. This is not evidence of a sustained relay outage. The recorded WebRTC candidate-pair byte counters and absence of alternative serving-peer connections establish the direct browser data path in this local test.
 
-Default current `@helia/unixfs` importer uses 1 MiB chunks and balanced layout. This is IPFS-native chunking, not a bespoke MeshCache chunk envelope. [UnixFS implementation](https://github.com/ipfs/helia/tree/main/packages/unixfs). Default chunking makes the smaller article one raw block; the 2 MiB article exercises the multi-block DAG.
+Default current `@helia/unixfs` importer uses 1 MiB chunks and balanced layout. This is IPFS-native chunking, not a bespoke Ember Page chunk envelope. [UnixFS implementation](https://github.com/ipfs/helia/tree/main/packages/unixfs). Default chunking makes the smaller article one raw block; the 2 MiB article exercises the multi-block DAG.
 
 The local relay has 256 maximum reservations and 16 MiB/120-second circuit limits solely for repeatable testing. Earlier reruns exhausted a 20-reservation fixture because stale reservations remain after short-lived profile tests; increasing the fixture capacity avoids conflating fixture admission with transport correctness. Two intermediate diagnostic assertions expected Chrome `data-channel` stats, which were absent; the final assertion checks the available succeeded candidate-pair stats instead. No transport fallback was added. The initial hardcoded tiny image fixture failed a final decode check; it was replaced by a canvas-generated WebP and the complete transfer suite reran successfully with a Chrome decode assertion.
 

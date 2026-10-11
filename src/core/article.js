@@ -64,7 +64,7 @@ async function copy(bytes, article) {
 export async function encodeArticle(input, options = {}) {
   const article = validateArticle(input, options);
   const bytes = encoder.encode(
-    JSON.stringify({ format: 'meshcache.article', version: 1, article })
+    JSON.stringify({ format: 'emberpage.article', version: 1, article })
   );
   if (bytes.byteLength > MAX_ARTICLE_BYTES)
     throw new Error('Article file is too large.');
@@ -95,7 +95,7 @@ export async function decodeArticle(
   if (
     !file ||
     Array.isArray(file) ||
-    file.format !== 'meshcache.article' ||
+    file.format !== 'emberpage.article' ||
     file.version !== 1
   )
     throw new Error('Unsupported article format.');

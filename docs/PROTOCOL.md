@@ -1,13 +1,15 @@
-# MeshCache first-release protocol
+# Ember Page first-release protocol
 
-Frozen 2026-10-11 for the architecture in [PLAN.md](PLAN.md). This is a new first release: one public article format, one blob provider, one metadata relay. The experimental kinds below are MeshCache conventions, not registered Nostr standards. No Waku, legacy packet decoder, encryption, compression, chunking, or automatic provider/format fallback is part of this contract.
+Frozen 2026-10-11 for the architecture in [PLAN.md](PLAN.md). This is a new first release: one public article format, one blob provider, one metadata relay. The experimental kinds below are Ember Page conventions, not registered Nostr standards. No Waku, legacy packet decoder, encryption, compression, chunking, or automatic provider/format fallback is part of this contract.
+
+Ember Page starts fresh with its own database names, signing-key slot, article format identifier, and signed event namespaces. There is no legacy decoder, directory fallback, or stored-data migration.
 
 ## Article file and hashes
 
 The file is exact UTF-8 JSON:
 
 ```json
-{"format":"meshcache.article","version":1,"article":{"url":"https://example.org/article","title":"Article title","byline":"Author","capturedAt":1791700000000,"content":"<p>Sanitized HTML containing embedded WebP images.</p>"}}
+{"format":"emberpage.article","version":1,"article":{"url":"https://example.org/article","title":"Article title","byline":"Author","capturedAt":1791700000000,"content":"<p>Sanitized HTML containing embedded WebP images.</p>"}}
 ```
 
 `url` is normalized HTTP(S) without credentials or fragment, preserving content-defining query parameters. `capturedAt` is integer milliseconds, nonnegative and no more than 60 seconds in the future. Age alone does not invalidate a body. Required fields retain their known types. Bounded optional fields are inert and ignored for display; unknown format/version is rejected.
@@ -40,7 +42,7 @@ Enforce file size during streaming, before parsing. A caller may share `{remaini
 
 Relay: `wss://relay.primal.net`.
 
-Signing identity is one locally generated Schnorr/secp256k1 key per installation, stored separately from evictable article caches under `chrome.storage.local.meshcacheSigningKey`. Clearing article caches must not remove the key. Public signatures link an installation's actions; they do not prove authorship or independent human voters.
+Signing identity is one locally generated Schnorr/secp256k1 key per installation, stored separately from evictable article caches under `chrome.storage.local.emberpageSigningKey`. Clearing article caches must not remove the key. Public signatures link an installation's actions; they do not prove authorship or independent human voters.
 
 All metadata is bounded to 8 KiB; writers measure the complete signed EVENT frame. Nostr `created_at` is integer Unix seconds. Normalized application records expose `createdAt` in milliseconds. Reject timestamps more than 60 seconds in the future and events outside the 30-day discovery window. There is no article expiry or automatic renewal. Requests/Wanted are outside this release.
 
@@ -49,7 +51,7 @@ All metadata is bounded to 8 KiB; writers measure the complete signed EVENT fram
 Tags must contain exactly one each:
 
 ```json
-[["t","meshcache-v1-listing"],["u","<urlHash>"],["x","<contentHash>"]]
+[["t","emberpage-v1-listing"],["u","<urlHash>"],["x","<contentHash>"]]
 ```
 
 Content is JSON with:
@@ -64,14 +66,14 @@ Normalized listing: `{id,pubkey,createdAt,url,urlHash,contentHash,blobHash,size,
 
 Publish only after the blob upload succeeds. If listing publication fails, retain the local copy and successful upload receipt. Explicit retry sends the listing using that receipt, without reuploading the file. Report complete sharing success only after relay OK accepts the signed listing.
 
-Discovery query: kind 8965, `#t=meshcache-v1-listing`, `since=now-30days`, at most 100 returned metadata events. Validate Nostr event ID/signature and the contract locally; deduplicate exact event IDs. This bounded batch is not a claim of global completeness.
+Discovery query: kind 8965, `#t=emberpage-v1-listing`, `since=now-30days`, at most 100 returned metadata events. Validate Nostr event ID/signature and the contract locally; deduplicate exact event IDs. This bounded batch is not a claim of global completeness.
 
 ### Rating: experimental kind 8966
 
 Tags must contain exactly one each:
 
 ```json
-[["t","meshcache-v1-rating"],["u","<urlHash>"],["x","<contentHash>"]]
+[["t","emberpage-v1-rating"],["u","<urlHash>"],["x","<contentHash>"]]
 ```
 
 Content: `{"version":1,"urlHash":"<64 lowercase hex>","contentHash":"<64 lowercase hex>","value":1}`; value is exactly 1 or -1.

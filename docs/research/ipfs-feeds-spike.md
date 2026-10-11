@@ -6,7 +6,7 @@ Date: 2026-10-11. Throwaway code in `spikes/ipfs-feeds`; production extension an
 
 Yes for the exercised paths: separate Helia nodes exchanged signed contributor feeds and an independently signed popularity snapshot through IPFS Bitswap. Real signed IPNS names resolved through a local Kademlia network, and a separate bounded public-DHT experiment published and resolved a synthetic IPNS pointer from a fresh resolver that never dialed the publisher directly. No Primal, Nostr, HTTP gateway, or simulated pointer map was used.
 
-This is not evidence of durable browser hosting or effortless global discovery. An aggregator polls an explicitly registered list of contributor names. IPFS does not enumerate every MeshCache feed. Public pointer resolution passed; public retrieval of the referenced file and long-term retention were not tested here.
+This is not evidence of durable browser hosting or effortless global discovery. An aggregator polls an explicitly registered list of contributor names. IPFS does not enumerate every Ember Page feed. Public pointer resolution passed; public retrieval of the referenced file and long-term retention were not tested here.
 
 ## Run
 
@@ -26,7 +26,7 @@ The local spike reuses the root project's installed `jsdom`, article encoder, `i
 4. The aggregator signs a popularity snapshot, stores it on IPFS, and publishes its own stable IPNS name. A third node resolves and fetches that snapshot. A temporary localhost HTTP `/popular` and `/health` endpoint also demonstrates how an optional future extension could poll the separate site.
 5. The aggregator never downloads article bodies. The reader downloads bodies independently and applies the existing hash verification, sanitizer, actual DOM inspection, and candidate filter. A short article appears in metadata trends but is excluded from the reader's final candidates. Metadata rankings do not certify readability.
 
-Local network configuration: three separate in-memory Helia 7.1.16 nodes, TCP over localhost, Noise encryption, Yamux, Bitswap, a private Kademlia protocol `/meshcache/spike/kad/1.0.0`, no public bootstrap and no HTTP block broker. IPNS package 10.2.2. These are actual network sockets and cryptographic records, not browser IndexedDB or simulated transport.
+Local network configuration: three separate in-memory Helia 7.1.16 nodes, TCP over localhost, Noise encryption, Yamux, Bitswap, a private Kademlia protocol `/emberpage/spike/kad/1.0.0`, no public bootstrap and no HTTP block broker. IPNS package 10.2.2. These are actual network sockets and cryptographic records, not browser IndexedDB or simulated transport.
 
 ## Results
 

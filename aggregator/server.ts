@@ -11,11 +11,12 @@ import type { AggregatorStore } from "./store.js";
 import type { MetadataDirectory } from "./types.ts";
 
 const publicRoot = new URL("./public/", import.meta.url);
-const FILES = new Map<string, readonly [string, string]>([
-  ["/", ["index.html", "text/html"]],
-  ["/index.html", ["index.html", "text/html"]],
-  ["/dashboard.css", ["dashboard.css", "text/css"]],
-  ["/dashboard.js", ["dashboard.js", "text/javascript"]],
+const FILES = new Map<string, readonly [URL, string]>([
+  ["/", [new URL("index.html", publicRoot), "text/html"]],
+  ["/index.html", [new URL("index.html", publicRoot), "text/html"]],
+  ["/dashboard.css", [new URL("dashboard.css", publicRoot), "text/css"]],
+  ["/dashboard.js", [new URL("dashboard.js", publicRoot), "text/javascript"]],
+  ["/logo.png", [new URL("../public/icons/logo.png", import.meta.url), "image/png"]],
 ]);
 const HEADERS = {
   "Cache-Control": "no-store",
@@ -138,7 +139,7 @@ export function createAggregatorServer({
       const file = FILES.get(url.pathname);
       if (file) {
         const content = yield* Effect.tryPromise({
-          try: () => readFile(new URL(file[0], publicRoot)),
+          try: () => readFile(file[0]),
           catch: (cause) =>
             new RequestError({
               message: "The local aggregator could not read this page.",
@@ -148,7 +149,7 @@ export function createAggregatorServer({
         });
         response.writeHead(200, {
           ...HEADERS,
-          "Content-Type": `${file[1]}; charset=utf-8`,
+          "Content-Type": file[1] === "image/png" ? file[1] : `${file[1]}; charset=utf-8`,
         });
         response.end(content);
         return;
@@ -157,7 +158,7 @@ export function createAggregatorServer({
     if (request.method === "POST" && url.pathname === "/api/refresh") {
       if (
         request.headers.origin !== origin ||
-        request.headers["x-meshcache-action"] !== "refresh"
+        request.headers["x-emberpage-action"] !== "refresh"
       ) {
         json(response, 403, {
           error: "Refresh must come from this dashboard.",

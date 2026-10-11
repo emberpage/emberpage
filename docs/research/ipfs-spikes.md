@@ -26,7 +26,7 @@ The feed test uses the actual production article inspector and eligibility filte
 
 An explicitly shared article becomes a CID and a local preservation pin. Independent readers can opt into retaining and serving that same content. Contributor feed snapshots contain signed listings and explicit ratings; stable IPNS names identify their latest snapshots. A separate collector polls a registered set of names, computes observed trends, and publishes a signed result snapshot. An optional discovery client can later poll that output. Nostr and Primal are not required by this design.
 
-The registry remains an application discovery root. IPFS routing finds holders of a known CID, not every MeshCache contributor. Multiple independent registries/collectors are possible, but this spike does not implement their federation or choose their trust policy.
+The registry remains an application discovery root. IPFS routing finds holders of a known CID, not every Ember Page contributor. Multiple independent registries/collectors are possible, but this spike does not implement their federation or choose their trust policy.
 
 ## What prevents immediate adoption
 
@@ -42,6 +42,6 @@ The final browser rerun passed 55 recorded hardening steps and 19 baseline steps
 
 ## Recommendation
 
-IPFS is a credible transport for a participant-operated MeshCache. Keep this experiment separate from the core extension until public provider discovery and transfer across different networks, a maintained relay arrangement, the Bitswap guard integration, and independent holder uptime are qualified. The optional aggregation path can remain a separate local collector and later a separate discovery extension. There is no reason to restore Waku merely to add application-level chunking: the tested IPFS file path already uses native UnixFS blocks.
+IPFS is a credible transport for a participant-operated Ember Page. Keep this experiment separate from the core extension until public provider discovery and transfer across different networks, a maintained relay arrangement, the Bitswap guard integration, and independent holder uptime are qualified. The optional aggregation path can remain a separate local collector and later a separate discovery extension. There is no reason to restore Waku merely to add application-level chunking: the tested IPFS file path already uses native UnixFS blocks.
 
 The current production checks still pass: `npm run check`, 72 tests plus build. Test servers and disposable browsers are shut down after the experiments. All publication used synthetic data; the public pointer probes had 60-second signed validity and disabled upkeep. Expiry is not a guarantee of global erasure.

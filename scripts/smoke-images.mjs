@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 // Two real origins reproduce a normally loaded, canvas-tainted article illustration.
 // This regression uses an isolated extension/profile and never publishes articles.
-const root = await mkdtemp(join(tmpdir(), 'meshcache-image-smoke-'));
+const root = await mkdtemp(join(tmpdir(), 'emberpage-image-smoke-'));
 const png = await readFile('public/icons/icon-128.png');
 const imageRequests = [];
 const imageServer = createServer((request, response) => {

@@ -12,7 +12,7 @@ async function fixture(t,overrides={}){
   const server=createAggregatorServer({store,directory});server.listen(0,'127.0.0.1');await once(server,'listening');
   const origin=`http://127.0.0.1:${server.address().port}`;
   t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));store.close();});
-  const refresh=options=>fetch(`${origin}/api/refresh`,{method:'POST',headers:{Origin:origin,'X-MeshCache-Action':'refresh',...options?.headers},body:options?.body});
+  const refresh=options=>fetch(`${origin}/api/refresh`,{method:'POST',headers:{Origin:origin,'X-EmberPage-Action':'refresh',...options?.headers},body:options?.body});
   return {store,item,directory,server,origin,calls,refresh};
 }
 

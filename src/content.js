@@ -578,11 +578,11 @@ export async function captureArticle(
 // Repeated injections replace our listener so the current bundle always handles capture.
 export function startContentCapture() {
   if (globalThis.chrome?.runtime?.onMessage) {
-    if (globalThis.__meshcacheCaptureListener)
+    if (globalThis.__emberpageCaptureListener)
       chrome.runtime.onMessage.removeListener(
-        globalThis.__meshcacheCaptureListener
+        globalThis.__emberpageCaptureListener
       );
-    globalThis.__meshcacheCaptureListener = (message, _sender, sendResponse) => {
+    globalThis.__emberpageCaptureListener = (message, _sender, sendResponse) => {
       if (
         message?.type !== 'CAPTURE_ARTICLE' &&
         message?.action !== 'CAPTURE_ARTICLE'
@@ -593,6 +593,6 @@ export function startContentCapture() {
       );
       return true;
     };
-    chrome.runtime.onMessage.addListener(globalThis.__meshcacheCaptureListener);
+    chrome.runtime.onMessage.addListener(globalThis.__emberpageCaptureListener);
   }
 }
