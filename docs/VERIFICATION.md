@@ -1,10 +1,10 @@
 # What has been tested
 
-## Current checks: 0.1.4
+## Current checks: 0.1.5
 
 On 2026-10-11, the local build passed strict TypeScript, **84 automated tests**, the production build/manifest check, extension and dashboard browser smoke tests, and **20 sequential browser scenarios**. GitHub CI and ZIP checksums are available with each [release](https://github.com/emberpage/emberpage/releases).
 
-The [drive log](TEST-DRIVE.md) records keyboard actions, assertions and local screenshot paths. It covers save/read/remove, text-only recovery, missing or hostile content, offline failures, repeated actions, pending shares and count/size eviction. These fixture runs publish nothing. Responsive checks cover 360, 800 and 1,280 px widths.
+The [drive log](TEST-DRIVE.md) records keyboard actions, assertions and local screenshot paths. It covers save/read/remove, text-only recovery, missing or hostile content, offline failures, repeated actions, pending shares and count/size eviction. These fixture runs publish nothing. Responsive checks cover 360, 800 and 1,280 px widths. Theme checks verify local Geist fonts and light/dark rendering; extracted article HTML uses the upstream shadcn Typeset stylesheet.
 
 Native Chrome testing separately exercised the real toolbar permission: preview a Wikipedia article, save privately, then read its embedded portrait. The screenshot-permission smoke harness uses a disposable adjusted manifest; it does not prove that toolbar permission by itself.
 

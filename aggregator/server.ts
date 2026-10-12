@@ -16,6 +16,9 @@ const FILES = new Map<string, readonly [URL, string]>([
   ["/index.html", [new URL("index.html", publicRoot), "text/html"]],
   ["/dashboard.css", [new URL("dashboard.css", publicRoot), "text/css"]],
   ["/dashboard.js", [new URL("dashboard.js", publicRoot), "text/javascript"]],
+  ["/theme.css", [new URL("../public/theme.css", import.meta.url), "text/css"]],
+  ["/fonts/geist-sans.woff2", [new URL("../public/fonts/geist-sans.woff2", import.meta.url), "font/woff2"]],
+  ["/fonts/geist-mono.woff2", [new URL("../public/fonts/geist-mono.woff2", import.meta.url), "font/woff2"]],
   ["/logo.png", [new URL("../public/icons/logo.png", import.meta.url), "image/png"]],
 ]);
 const HEADERS = {
@@ -23,7 +26,7 @@ const HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'",
 };
 function json(response: ServerResponse, status: number, value: unknown) {
   response.writeHead(status, {
@@ -149,7 +152,7 @@ export function createAggregatorServer({
         });
         response.writeHead(200, {
           ...HEADERS,
-          "Content-Type": file[1] === "image/png" ? file[1] : `${file[1]}; charset=utf-8`,
+          "Content-Type": file[1].startsWith("text/") ? `${file[1]}; charset=utf-8` : file[1],
         });
         response.end(content);
         return;

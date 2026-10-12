@@ -1,6 +1,6 @@
 {
   "name": "emberpage",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "type": "module",
   "description": "Preserve readable article snapshots for when links break or pages disappear.",
