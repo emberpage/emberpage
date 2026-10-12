@@ -50,7 +50,7 @@ async function installationIdentity(): Promise<Uint8Array> {
     const stored: unknown = (await chrome.storage.local.get(key))[key];
     if (stored !== undefined) {
       if (typeof stored !== "string" || !HASH.test(stored))
-        throw new Error("The local signing key is invalid.");
+        throw new Error("This installation’s sharing identity is damaged. You can still read saved copies.");
       return Uint8Array.from(stored.match(/../g)!, (byte) =>
         parseInt(byte, 16),
       );
@@ -125,7 +125,7 @@ const responseBytes = Effect.fn("EmberNetwork.responseBytes")(function* (
         total += value.length;
         if (budget) {
           if (value.length > budget.remainingBytes)
-            return yield* reject("The discovery download budget is exhausted.");
+            return yield* reject("The article search reached its download limit.");
           budget.remainingBytes -= value.length;
         }
         if (total > maximum)
@@ -200,7 +200,7 @@ export class EmberNetwork {
           );
         if (response.url && response.url !== url)
           return yield* reject(
-            "Article retrieval left the configured provider.",
+            "The download went to an unexpected server and was stopped.",
           );
         const bytes = yield* responseBytes(response, maximum, budget);
         return { response, bytes };
@@ -241,7 +241,7 @@ export class EmberNetwork {
         },
       },
       8192,
-      "Article upload timed out. Your local copy is saved.",
+      "Sharing took too long. Your copy is saved on this device.",
     );
     if (!response.ok) {
       const text = yield* Effect.try({
@@ -355,7 +355,7 @@ export class EmberNetwork {
       (!Number.isSafeInteger(budget.remainingBytes) ||
         budget.remainingBytes < listing.size)
     )
-      return yield* reject("The discovery download budget is exhausted.");
+      return yield* reject("The article search reached its download limit.");
     const hash = listing.blobHash;
     const url = `https://media.primal.net/uploads2/${hash[0]}/${hash.slice(1, 3)}/${hash.slice(3, 5)}/${hash}.json`;
     const { bytes } = yield* this.request(

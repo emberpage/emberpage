@@ -1,28 +1,27 @@
-# Releases
+# Release a Chrome ZIP
 
-Use Node.js 24 and the pnpm version pinned in `package.json`.
+Use Node.js 24 and the pnpm version in `package.json`.
+
+1. Change the version in `package.json` on a branch. WXT uses it for the manifest and ZIP name.
+2. Run the checks below and merge the pull request after required CI checks pass.
+3. From updated `main`, push a tag matching the package version.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm check
 pnpm exec playwright install chromium
+pnpm check
 pnpm smoke
 pnpm smoke:aggregator
 pnpm test:drive
 pnpm zip
-```
 
-WXT writes the unpacked Chrome extension and versioned ZIP to `.output/`. The manifest version comes from `package.json`; do not maintain a second version in a manifest file.
-
-For the next release, update the package version on a branch and merge a pull request after its required checks pass. From the updated main branch, push a matching tag:
-
-```sh
+# Example for package version 0.1.2:
 git switch main
 git pull --ff-only
 git tag v0.1.2
 git push origin v0.1.2
 ```
 
-GitHub Actions installs the frozen lockfile, typechecks, runs tests, builds, and drives the actual extension and local dashboard. It verifies the production manifest, packages the extension, and records ZIP SHA-256 checksums. A matching `v` tag publishes those verified artifacts as a GitHub release. A failed check prevents release publication.
+Local files are in `.output/`: the unpacked extension and versioned Chrome ZIP. GitHub Actions repeats checks, verifies the manifest, and publishes the ZIP with SHA-256 checksums when a matching tag passes. A failed check prevents publication.
 
-This pipeline publishes GitHub downloads. Chrome Web Store submission is a separate release step that requires a developer account and store credentials; none are configured here. The aggregator and isolated research experiments are not included in the extension ZIP.
+This releases [GitHub downloads](https://github.com/emberpage/emberpage/releases). Chrome Web Store submission requires a separate developer account and credentials. The dashboard and experiments are excluded from the ZIP.

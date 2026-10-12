@@ -1,9 +1,9 @@
 {
   "name": "emberpage",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
-  "description": "Explicit article caching with Blossom files and Nostr discovery.",
+  "description": "Save articles privately, share them publicly, and read shared copies.",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",

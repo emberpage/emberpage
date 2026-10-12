@@ -100,7 +100,7 @@ $('#browse').addEventListener('click', async () => {
         warning ||
           (entries.length
             ? 'Choose an article to read.'
-            : 'No eligible copies found. You can share one from Cache.')
+            : 'No readable copies found. You can share an article from Save.')
       );
     },
     'Checking…'
@@ -124,14 +124,14 @@ async function library() {
   const container = $('#library-list');
   container.replaceChildren();
   if (!records.length)
-    empty(container, 'Preview an article from Cache to save your first copy.');
+    empty(container, 'Open an article and choose Save to keep your first copy.');
   for (const record of records) {
     const detail = record.pendingShare
       ? 'Sharing unfinished'
       : record.shared
         ? record.source === 'reader'
-          ? 'Community copy'
-          : 'Shared for readers'
+          ? 'Shared copy'
+          : 'Shared publicly'
         : 'Saved on this device';
     const row = item(record.title, `${hostname(record.url)} · ${detail}`, () =>
       send('OPEN_COPY', { id: record.contentHash })
@@ -148,7 +148,7 @@ async function library() {
           status(
             result.warning ||
               result.shareError ||
-              (result.shared ? 'Shared for readers.' : result.validationError),
+              (result.shared ? 'Shared publicly.' : result.validationError),
             !result.shared
           );
           await library();
@@ -163,7 +163,7 @@ async function library() {
           await send('DISCARD_SHARE', { id: record.contentHash });
           await library();
           status(
-            'Pending sharing canceled. A file already uploaded may remain public.'
+            'Sharing canceled. An already uploaded copy may still be public.'
           );
         })
       );
@@ -192,7 +192,7 @@ $('#clear').addEventListener('click', () =>
     renderCatalog([]);
     $('[data-view="library"]').focus();
     status(
-      'Local copies cleared. Public files and listings may remain available.'
+      'Saved copies removed. Public copies may still be available.'
     );
   })
 );

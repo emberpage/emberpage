@@ -1,8 +1,6 @@
-# Ember Page first-release protocol
+# Ember Page protocol
 
-Frozen 2026-10-11 for the architecture in [PLAN.md](PLAN.md). This is a new first release: one public article format, one blob provider, one metadata relay. The experimental kinds below are Ember Page conventions, not registered Nostr standards. No Waku, legacy packet decoder, encryption, compression, chunking, or automatic provider/format fallback is part of this contract.
-
-Ember Page starts fresh with its own database names, signing-key slot, article format identifier, and signed event namespaces. There is no legacy decoder, directory fallback, or stored-data migration.
+Current contract for article files, listings and ratings. The event kinds are Ember Page conventions, not registered Nostr standards. There is one decoder, blob provider and relay, with no automatic fallbacks or stored-data migration.
 
 ## Article file and hashes
 
@@ -82,10 +80,42 @@ Normalized rating: `{id,pubkey,createdAt,urlHash,contentHash,value}`.
 
 Query at most 5000 metadata events within 30 days for at most 100 requested `(urlHash,contentHash)` pairs. Relay filters over arrays can return a cross-product; reject any pair the caller did not request. Count only the newest valid rating per signing key and content snapshot in the seven-day popularity window. Resolve equal-time ties deterministically by event ID. Cap each rating direction at 50. No automatic vote follows reading or successful verification.
 
+## Reader eligibility and ranking
+
+An explicit discovery pass checks at most 100 recent listings, deduplicates content, and downloads at most 20 unique files. Download concurrency is two and the combined streaming budget is 16 MiB. Only complete files that pass all checks appear in Popular; the batch is not a global catalog.
+
+After file and metadata verification, inspect and sanitize the HTML locally. Require at least 1,000 visible characters, one content block, at most 10 images, and text density between 0.1 and 1, excluding embedded image data. Bound inspection to 50,000 DOM nodes and 100 nesting levels. These are readability heuristics, not truth checks.
+
+Render allowlisted inert HTML and embedded still WebP only. Remove scripts, event handlers, frames, forms, remote resource loads and unsafe URLs. Before native image decoding, inspect RIFF/frame headers and reject malformed or animated WebP, image floods, dimensions above 8,192 px on either edge, or more than 16 million pixels per image. The article total is at most 32 million decoded pixels. Writer, preview and reader apply the same bounds.
+
+Rank eligible snapshots by `(up - down + 2) / (ageHours + 2)^1.5`, using seven-day ratings and the earliest observed listing in the discovery window for age. Each rating direction is capped at 50; content hash then blob hash breaks ties. Replication count does not increase the score.
+
+## Local limits and retention
+
+These application limits do not promise provider capacity or retention.
+
+| Resource | Limit |
+| --- | --- |
+| Article file | 2 MiB on upload and streamed download |
+| Captured images | 10; WebP quality 0.8, longest edge 1,600 px; 1 MiB total data-URI bytes |
+| Contributor articles | 100 records / 16 MiB |
+| Reader articles | 100 records / 16 MiB |
+| Discovery metadata | 1,000 listings / 2 MiB |
+| Rating metadata | 5,000 events / 4 MiB |
+| Pending share receipts | 20 records / 256 KiB |
+
+Contributor and reader stores evict whole records atomically by least recent use, accounting for stored bytes. Browsing cannot evict contributor copies. Discovery evicts oldest listings; ratings retain newest votes in the active window. Pending shares remain protected until explicit retry, discard or quota handling. If only protected records remain, reject the new write. Local eviction never deletes remote files. Clearing article caches retains the signing key.
+
+If captured images exceed the limits, keep the preview with descriptive placeholders and disable saving/sharing until the user explicitly chooses text only or discards it. Do not silently save a partial image capture.
+
+Article bodies have no age expiry. Listing and rating queries cover 30 days; popularity covers seven. Older bodies remain readable locally or while the provider serves them, even if they leave discovery. There is no automatic remote deletion or renewal. Losing the signing key can prevent owner-authorized deletion; deleting a listing cannot erase copies elsewhere.
+
 ## Completion, failure, and optional aggregator
 
 Open one finite WebSocket operation and close subscriptions at EOSE, the result cap, rejection, disconnection, or timeout. Relay OK is acceptance at that relay, not future retrieval or retention. Empty completed queries differ from failed or refused queries. Provider and relay can independently fail; retain local copies and make the failure visible.
 
 The separate optional aggregator imports only the read-only `NostrDirectory` and metadata validators. It consumes listings/ratings, never blob bodies, and never accesses the extension signing identity. Its index/trends are metadata observations. The extension does not call it and must work while it is stopped.
+
+The dashboard refreshes 60 seconds after each completed pass. Its SQLite stores retain at most 1,000 listings / 2 MiB and 5,000 ratings / 4 MiB within 30 days, evicting oldest events first. The detailed journal is limited to seven days, 500 events and 1 MiB. Separate hourly counters retain 168 buckets / 32 KiB so journal eviction does not erase seven-day totals. Counters include repeated accepted/rejected observations, not unique articles or people; the current interval is partial.
 
 Nostr and Blossom mechanisms do not guarantee permanent storage, free quotas, service availability, uploader anonymity or Sybil-resistant rankings. Actual provider workload and retention policies remain release qualification requirements. [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md), [Blossom BUD-01](https://github.com/hzrd149/blossom/blob/master/buds/01.md), [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md)
