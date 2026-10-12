@@ -1,0 +1,94 @@
+{
+  "$schema": "https://www.dependency-cruiser.org/schema/dependency-cruiser-config.json",
+  "forbidden": [
+    {
+      "name": "no-cycles",
+      "severity": "error",
+      "from": {},
+      "to": {
+        "circular": true
+      }
+    },
+    {
+      "name": "no-unresolved-imports",
+      "severity": "error",
+      "from": {},
+      "to": {
+        "couldNotResolve": true
+      }
+    },
+    {
+      "name": "extension-independent-of-dashboard",
+      "severity": "error",
+      "from": {
+        "path": "^(src|entrypoints)/"
+      },
+      "to": {
+        "path": "^aggregator/"
+      }
+    },
+    {
+      "name": "aggregator-metadata-only",
+      "severity": "error",
+      "from": {
+        "path": "^aggregator/"
+      },
+      "to": {
+        "path": "^src/(?!core/|network/nostr\\.ts$|types\\.ts$)"
+      }
+    },
+    {
+      "name": "core-independent-of-platform",
+      "severity": "error",
+      "from": {
+        "path": "^src/core/"
+      },
+      "to": {
+        "path": "^(aggregator|entrypoints)/|^src/(?!core/|types\\.ts$)"
+      }
+    },
+    {
+      "name": "no-retired-experiments",
+      "severity": "error",
+      "from": {},
+      "to": {
+        "path": "(^|/)(spikes|research)/"
+      }
+    },
+    {
+      "name": "runtime-no-dev-dependencies",
+      "severity": "error",
+      "from": {
+        "path": "^(src|entrypoints|aggregator)/"
+      },
+      "to": {
+        "dependencyTypes": [
+          "npm-dev"
+        ]
+      }
+    }
+  ],
+  "options": {
+    "doNotFollow": {
+      "path": "node_modules"
+    },
+    "tsConfig": {
+      "fileName": "tsconfig.json"
+    },
+    "tsPreCompilationDeps": true,
+    "exclude": "(^|/)(node_modules|\\.output|\\.wxt|artifacts)/",
+    "enhancedResolveOptions": {
+      "exportsFields": [
+        "exports"
+      ],
+      "conditionNames": [
+        "import",
+        "default"
+      ],
+      "mainFields": [
+        "module",
+        "main"
+      ]
+    }
+  }
+}

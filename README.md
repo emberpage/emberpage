@@ -38,7 +38,7 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm check` checks types, tests, and the build. `pnpm smoke` tests the extension in Chrome. `pnpm zip` creates a release ZIP.
+All code is TypeScript. Effect handles workflows and validation. `pnpm check` enforces typed linting, unused-code and architecture rules, then runs tests and the WXT build. `pnpm smoke` tests the extension in Chrome. `pnpm zip` creates a release ZIP.
 
 `pnpm aggregator` starts a separate [local dashboard](http://127.0.0.1:4318). It tracks community archive listings and ratings without downloading articles. The extension works without it.
 

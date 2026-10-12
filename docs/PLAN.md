@@ -23,7 +23,3 @@ The [protocol](PROTOCOL.md) defines the file format, validation, ranking and exa
 The dashboard runs separately on localhost. It reads titles, links and ratings to show trends and connection activity. It never downloads article files. Its trends are observations of metadata, not proof that an article is safe or readable.
 
 The extension does not call the dashboard and works while it is stopped. There is no public dashboard deployment or extension-facing API.
-
-## Experiments
-
-IPFS experiments stay in `spikes/`. They are not used by the extension. Earlier Waku, Nostr and Blossom probes remain in [research](research/README.md).

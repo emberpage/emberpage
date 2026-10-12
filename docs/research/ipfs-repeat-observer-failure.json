@@ -1,6 +1,0 @@
-{
-  "ok": false,
-  "scope": "Final rerun before runner correction, same-host disposable profiles",
-  "error": "Legacy progress-event assertion failed after exact-byte and private/read policy assertions passed. Relative evidence output path also failed from repository-root cwd.",
-  "correction": "Runner now uses holder serving-byte accounting rather than optional progress notifications and resolves its evidence path relative to import.meta.url."
-}

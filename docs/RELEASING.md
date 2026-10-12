@@ -11,17 +11,18 @@ pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm check
 pnpm smoke
+pnpm smoke:images
 pnpm smoke:aggregator
 pnpm test:drive
 pnpm zip
 
-# Example for package version 0.1.5:
+# Example for package version 0.1.6:
 git switch main
 git pull --ff-only
-git tag v0.1.5
-git push origin v0.1.5
+git tag v0.1.6
+git push origin v0.1.6
 ```
 
 Local files are in `.output/`: the unpacked extension and versioned Chrome ZIP. GitHub Actions repeats checks, verifies the manifest, and publishes the ZIP with SHA-256 checksums when a matching tag passes. A failed check prevents publication.
 
-This releases [GitHub downloads](https://github.com/emberpage/emberpage/releases). Chrome Web Store submission requires a separate developer account and credentials. The dashboard and experiments are excluded from the ZIP.
+This releases [GitHub downloads](https://github.com/emberpage/emberpage/releases). Chrome Web Store submission requires a separate developer account and credentials. The separate dashboard is excluded from the ZIP.
