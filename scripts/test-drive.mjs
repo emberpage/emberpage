@@ -178,7 +178,7 @@ const scenarios = [
       assert.equal(await popup.locator('[data-view]').count(), 3);
       for (const view of ['cache', 'library', 'read'])
         await activate(popup, `[data-view="${view}"]`);
-      return ['Popular, Cache, Saved are keyboard reachable'];
+      return ['Popular, Save, Saved are keyboard reachable'];
     }
   },
   {
@@ -292,7 +292,7 @@ const scenarios = [
       await page.waitForFunction(() =>
         document.querySelector('#status').classList.contains('error')
       );
-      assert.match(await page.locator('#status').textContent(), /1,000/);
+      assert.match(await page.locator('#status').textContent(), /too short or incomplete to share/);
       assert.equal((await successful('LIBRARY'))[0].shared, false);
       assert.deepEqual(await successful('LOCAL_CATALOG'), []);
       return [
@@ -470,7 +470,7 @@ const scenarios = [
       assert.equal(records[0].contentHash, pendingHash);
       assert.match(
         await popup.locator('#status').textContent(),
-        /may remain public/
+        /may still be public/
       );
       return [
         'Cancellation preserves local bytes and warns about public retention'

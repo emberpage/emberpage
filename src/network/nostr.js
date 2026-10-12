@@ -85,34 +85,34 @@ export class NostrDirectory {
         } catch { /* Completion is final even if a closing socket refuses CLOSE. */ }
         if (error) reject(error); else resolve(result);
       };
-      const timer = setTimeout(() => finish(new Error('Discovery relay timed out.')), this.timeoutMs);
-      const abort = () => finish(new Error('Discovery relay operation was cancelled.'));
+      const timer = setTimeout(() => finish(new Error('The article directory took too long to respond. Try again.')), this.timeoutMs);
+      const abort = () => finish(new Error('The article directory request was canceled.'));
       if (signal?.aborted) { abort(); return; }
       signal?.addEventListener('abort', abort, { once: true });
       try { socket = new this.WebSocket(RELAY); }
-      catch { finish(new Error('Discovery relay could not connect.')); return; }
+      catch { finish(new Error('Could not connect to the article directory. Check your connection and try again.')); return; }
       socket.onopen = () => {
         try { socket.send(JSON.stringify(message)); }
-        catch { finish(new Error('Discovery relay could not send the operation.')); }
+        catch { finish(new Error('Could not send the request to the article directory. Try again.')); }
       };
-      socket.onerror = () => finish(new Error('Discovery relay connection failed.'));
-      socket.onclose = () => finish(new Error('Discovery relay closed before completing the operation.'));
+      socket.onerror = () => finish(new Error('The connection to the article directory failed. Try again.'));
+      socket.onclose = () => finish(new Error('The article directory disconnected before finishing. Try again.'));
       socket.onmessage = ({ data }) => {
         if (settled) return;
         inspected++;
-        if (inspected > limit + 32) { finish(new Error('Discovery relay exceeded the response limit.')); return; }
+        if (inspected > limit + 32) { finish(new Error('The article directory sent too much data. The request was stopped.')); return; }
         try {
           const text = typeof data === 'string' ? data : new TextDecoder().decode(data);
           if (encoder.encode(text).length > METADATA_BYTES + 256) return;
           const frame = JSON.parse(text);
           if (eventId && frame[0] === 'OK' && frame[1] === eventId) {
-            finish(frame[2] === true ? null : new Error(`Discovery relay rejected the message: ${String(frame[3] || 'no reason').slice(0, 500)}`), { accepted: true });
+            finish(frame[2] === true ? null : new Error(`The article directory rejected this update: ${String(frame[3] || 'no reason').slice(0, 500)}`), { accepted: true });
           } else if (!eventId && frame[1] === message[1]) {
             if (frame[0] === 'EVENT') {
               if (encoder.encode(JSON.stringify(frame[2])).length <= METADATA_BYTES) events.push(frame[2]);
               if (events.length >= limit) finish(null, events);
             } else if (frame[0] === 'EOSE') finish(null, events);
-            else if (frame[0] === 'CLOSED') finish(new Error(`Discovery relay refused the query: ${String(frame[2] || 'no reason').slice(0, 500)}`));
+            else if (frame[0] === 'CLOSED') finish(new Error(`The article directory refused this request: ${String(frame[2] || 'no reason').slice(0, 500)}`));
           }
         } catch { /* Ignore malformed remote frames within the response/time budget. */ }
       };
@@ -120,7 +120,7 @@ export class NostrDirectory {
   }
   /** @param {AbortSignal} [signal] */
   publish(event, signal = undefined) {
-    if (encoder.encode(JSON.stringify(['EVENT', event])).length > METADATA_BYTES) throw new Error('Discovery metadata exceeds 8 KiB.');
+    if (encoder.encode(JSON.stringify(['EVENT', event])).length > METADATA_BYTES) throw new Error('The article listing is too large to share.');
     return this.exchange(['EVENT', event], { eventId: event.id, signal });
   }
   /** @param {AbortSignal} [signal] */

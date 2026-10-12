@@ -994,3 +994,388 @@ Actual built MV3 extension in a disposable Chrome profile. Original local fixtur
 - Actions: Extension message: CLEAR; Keyboard Enter: [data-view="activity"]; Keyboard Enter: [data-view="storage"]; Keyboard Enter: [data-view="articles"]
 - Assertions: Actual localhost dashboard; Seven trend buckets and narrow navigation; No article body or public network activity
 - Evidence: `artifacts/test-drives/20.png` (local generated artifact)
+
+---
+
+# Twenty sequential browser test drives
+
+Build background SHA256: f54d4dbeac1ef455c7cb430690cab6953eb5192c2d93d1ab85628099a59ca94b
+
+Actual built MV3 extension in a disposable Chrome profile. Original local fixtures; public network failures are deliberately offline. Source-only localhost permission substitutes the automation toolbar grant; production CSP is retained. Sealed-draft and status seeding are labeled edge setup, not live publication evidence. No public uploads occur in this suite. Initial failures remain recorded; fixes are rerun separately.
+
+## 1. First launch is quiet and explains public sharing
+
+- Timestamp: 2026-10-12T00:01:30.018Z
+- Duration: 53ms
+- Result: **PASS**
+- Actions:
+- Assertions: Consent precedes archive actions; No automatic publication
+- Evidence: `artifacts/test-drives/01.png` (local generated artifact)
+
+## 2. Keyboard consent opens the three simple sections
+
+- Timestamp: 2026-10-12T00:01:30.133Z
+- Duration: 64ms
+- Result: **PASS**
+- Actions: Keyboard Enter: [data-view="cache"]; Keyboard Enter: [data-view="library"]; Keyboard Enter: [data-view="read"]
+- Assertions: Popular, Save, Saved are keyboard reachable
+- Evidence: `artifacts/test-drives/02.png` (local generated artifact)
+
+## 3. Unsupported browser pages disable capture
+
+- Timestamp: 2026-10-12T00:01:30.232Z
+- Duration: 132ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Keyboard Enter: [data-view="cache"]
+- Assertions: Invalid source has a clear disabled action
+- Evidence: `artifacts/test-drives/03.png` (local generated artifact)
+
+## 4. Actual local article capture opens safe image preview
+
+- Timestamp: 2026-10-12T00:01:30.388Z
+- Duration: 499ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Open local original article: /article; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture
+- Assertions: Actual content-script extraction; Visible inline WebP
+- Evidence: `artifacts/test-drives/04.png` (local generated artifact)
+
+## 5. Private save and offline reading retain the image
+
+- Timestamp: 2026-10-12T00:01:30.917Z
+- Duration: 365ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Open local original article: /article; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture; Keyboard Enter: #save; Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-main
+- Assertions: Private copy readable offline; Private copies have no public rating controls
+- Evidence: `artifacts/test-drives/05.png` (local generated artifact)
+
+## 6. Image overflow blocks saves until explicit text-only choice
+
+- Timestamp: 2026-10-12T00:01:31.383Z
+- Duration: 372ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Open local original article: /overflow; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture; Keyboard Enter: #save; Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-main
+- Assertions: Actual11-image capture preserves overflow flags; Text-only is the next keyboard stop and restores saving
+- Evidence: `artifacts/test-drives/06.png` (local generated artifact)
+
+## 7. Discard removes a preview without caching
+
+- Timestamp: 2026-10-12T00:01:31.800Z
+- Duration: 156ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Open local original article: /article; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture; Keyboard Enter: #discard; Extension message: DRAFT; Extension message: LIBRARY
+- Assertions: Discard leaves no draft or saved article
+- Evidence: `artifacts/test-drives/07.png` (local generated artifact)
+
+## 8. Short copies remain private and cannot be shared
+
+- Timestamp: 2026-10-12T00:01:31.978Z
+- Duration: 98ms
+- Result: **FAIL**
+- Failure: The input did not match the regular expression /1,000/. Input:
+
+'This copy is too short or incomplete to share. You can keep it on this device. Saved on this device.'
+
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Keyboard Enter: #share
+- Assertions: Stopped at the recorded failure
+- Evidence: `artifacts/test-drives/08.png` (local generated artifact)
+
+## 9. Empty source reports a capture error and recovers controls
+
+- Timestamp: 2026-10-12T00:01:32.116Z
+- Duration: 114ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture
+- Assertions: No phantom article; Error leaves capture usable
+- Evidence: `artifacts/test-drives/09.png` (local generated artifact)
+
+## 10. Missing previews and removed records explain recovery
+
+- Timestamp: 2026-10-12T00:01:32.252Z
+- Duration: 131ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR
+- Assertions: Both missing-state pages explain next action
+- Evidence: `artifacts/test-drives/10.png` (local generated artifact)
+
+## 11. Malicious markup and remote resources remain inert
+
+- Timestamp: 2026-10-12T00:01:32.399Z
+- Duration: 192ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Keyboard Enter: #save; Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-main
+- Assertions: Sanitized preview and retained reader; No executable or remote image content
+- Evidence: `artifacts/test-drives/11.png` (local generated artifact)
+
+## 12. Long title and wide table work on narrow keyboard UI
+
+- Timestamp: 2026-10-12T00:01:32.635Z
+- Duration: 106ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Keyboard Enter: #save
+- Assertions: No document overflow at360px; Table and save remain keyboard accessible
+- Evidence: `artifacts/test-drives/12.png` (local generated artifact)
+
+## 13. Duplicate share operations stay bounded when offline
+
+- Timestamp: 2026-10-12T00:01:32.782Z
+- Duration: 605ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Two explicit SAVE requests exercise overlapping operation state; Extension message: SAVE; Extension message: SAVE; Extension message: LIBRARY
+- Assertions: One retained pending copy; No unbounded duplicate operation or false public success
+- Evidence: `artifacts/test-drives/13.png` (local generated artifact)
+
+## 14. Pending share retry preserves local recovery on network failure
+
+- Timestamp: 2026-10-12T00:01:33.398Z
+- Duration: 46ms
+- Result: **PASS**
+- Actions: Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-actions button:first-child; Extension message: LIBRARY
+- Assertions: Retry fails honestly and stays recoverable
+- Evidence: `artifacts/test-drives/14.png` (local generated artifact)
+
+## 15. Cancel pending sharing keeps the local copy
+
+- Timestamp: 2026-10-12T00:01:33.482Z
+- Duration: 13ms
+- Result: **FAIL**
+- Failure: The input did not match the regular expression /may remain public/. Input:
+
+'Sharing canceled. An already uploaded copy may still be public.'
+
+- Actions: Extension message: LIBRARY
+- Assertions: Stopped at the recorded failure
+- Evidence: `artifacts/test-drives/15.png` (local generated artifact)
+
+## 16. Contributor count and byte limits evict whole old copies
+
+- Timestamp: 2026-10-12T00:01:33.516Z
+- Duration: 1351ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Extension message: LIBRARY; Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Extension message: LIBRARY
+- Assertions: 100-record quota enforced; 16MiB quota evicts oldest whole records
+- Evidence: `artifacts/test-drives/16.png` (local generated artifact)
+
+## 17. Offline Popular reports failure and restores its action
+
+- Timestamp: 2026-10-12T00:01:34.903Z
+- Duration: 42ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Keyboard Enter: #browse
+- Assertions: No metadata-only cards; Clear recoverable network error
+- Evidence: `artifacts/test-drives/17.png` (local generated artifact)
+
+## 18. Offline rating refresh shows an error without losing the readable copy
+
+- Timestamp: 2026-10-12T00:01:34.982Z
+- Duration: 165ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed only shared-reader-facing status in disposable writer IDB for offline-rating UI; no publication claim; Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-main; Keyboard Enter: #refresh-ratings; Keyboard Enter: #helpful
+- Assertions: Refresh and vote fail clearly; Local body remains readable
+- Evidence: `artifacts/test-drives/18.png` (local generated artifact)
+
+## 19. Saved removal and clear update the library
+
+- Timestamp: 2026-10-12T00:01:35.183Z
+- Duration: 120ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Keyboard Enter: [data-view="library"]; Focus after removal: {"tag":"BUTTON","id":""}; Keyboard Enter: #clear; Focus after clear: {"tag":"BUTTON","id":""}; Extension message: LIBRARY
+- Assertions: Removal and clear reflect actual local storage; Focus observations are recorded for final audit
+- Evidence: `artifacts/test-drives/19.png` (local generated artifact)
+
+## 20. Dashboard navigation and rolling trends stay metadata-only
+
+- Timestamp: 2026-10-12T00:01:35.339Z
+- Duration: 138ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Keyboard Enter: [data-view="activity"]; Keyboard Enter: [data-view="storage"]; Keyboard Enter: [data-view="articles"]
+- Assertions: Actual localhost dashboard; Seven trend buckets and narrow navigation; No article body or public network activity
+- Evidence: `artifacts/test-drives/20.png` (local generated artifact)
+
+
+---
+
+# Twenty sequential browser test drives
+
+Build background SHA256: f54d4dbeac1ef455c7cb430690cab6953eb5192c2d93d1ab85628099a59ca94b
+
+Actual built MV3 extension in a disposable Chrome profile. Original local fixtures; public network failures are deliberately offline. Source-only localhost permission substitutes the automation toolbar grant; production CSP is retained. Sealed-draft and status seeding are labeled edge setup, not live publication evidence. No public uploads occur in this suite. Initial failures remain recorded; fixes are rerun separately.
+
+## 1. First launch is quiet and explains public sharing
+
+- Timestamp: 2026-10-12T00:02:04.240Z
+- Duration: 34ms
+- Result: **PASS**
+- Actions:
+- Assertions: Consent precedes archive actions; No automatic publication
+- Evidence: `artifacts/test-drives/01.png` (local generated artifact)
+
+## 2. Keyboard consent opens the three simple sections
+
+- Timestamp: 2026-10-12T00:02:04.319Z
+- Duration: 52ms
+- Result: **PASS**
+- Actions: Keyboard Enter: [data-view="cache"]; Keyboard Enter: [data-view="library"]; Keyboard Enter: [data-view="read"]
+- Assertions: Popular, Save, Saved are keyboard reachable
+- Evidence: `artifacts/test-drives/02.png` (local generated artifact)
+
+## 3. Unsupported browser pages disable capture
+
+- Timestamp: 2026-10-12T00:02:04.410Z
+- Duration: 201ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Keyboard Enter: [data-view="cache"]
+- Assertions: Invalid source has a clear disabled action
+- Evidence: `artifacts/test-drives/03.png` (local generated artifact)
+
+## 4. Actual local article capture opens safe image preview
+
+- Timestamp: 2026-10-12T00:02:04.622Z
+- Duration: 192ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Open local original article: /article; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture
+- Assertions: Actual content-script extraction; Visible inline WebP
+- Evidence: `artifacts/test-drives/04.png` (local generated artifact)
+
+## 5. Private save and offline reading retain the image
+
+- Timestamp: 2026-10-12T00:02:04.844Z
+- Duration: 326ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Open local original article: /article; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture; Keyboard Enter: #save; Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-main
+- Assertions: Private copy readable offline; Private copies have no public rating controls
+- Evidence: `artifacts/test-drives/05.png` (local generated artifact)
+
+## 6. Image overflow blocks saves until explicit text-only choice
+
+- Timestamp: 2026-10-12T00:02:05.215Z
+- Duration: 289ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Open local original article: /overflow; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture; Keyboard Enter: #save; Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-main
+- Assertions: Actual11-image capture preserves overflow flags; Text-only is the next keyboard stop and restores saving
+- Evidence: `artifacts/test-drives/06.png` (local generated artifact)
+
+## 7. Discard removes a preview without caching
+
+- Timestamp: 2026-10-12T00:02:05.546Z
+- Duration: 155ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Open local original article: /article; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture; Keyboard Enter: #discard; Extension message: DRAFT; Extension message: LIBRARY
+- Assertions: Discard leaves no draft or saved article
+- Evidence: `artifacts/test-drives/07.png` (local generated artifact)
+
+## 8. Short copies remain private and cannot be shared
+
+- Timestamp: 2026-10-12T00:02:05.724Z
+- Duration: 99ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Keyboard Enter: #share; Extension message: LIBRARY; Extension message: LOCAL_CATALOG
+- Assertions: Short body rejected for Popular; Local copy retained with clear explanation
+- Evidence: `artifacts/test-drives/08.png` (local generated artifact)
+
+## 9. Empty source reports a capture error and recovers controls
+
+- Timestamp: 2026-10-12T00:02:05.861Z
+- Duration: 111ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Keyboard Enter: [data-view="cache"]; Keyboard Enter: #capture
+- Assertions: No phantom article; Error leaves capture usable
+- Evidence: `artifacts/test-drives/09.png` (local generated artifact)
+
+## 10. Missing previews and removed records explain recovery
+
+- Timestamp: 2026-10-12T00:02:05.992Z
+- Duration: 127ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR
+- Assertions: Both missing-state pages explain next action
+- Evidence: `artifacts/test-drives/10.png` (local generated artifact)
+
+## 11. Malicious markup and remote resources remain inert
+
+- Timestamp: 2026-10-12T00:02:06.133Z
+- Duration: 203ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Keyboard Enter: #save; Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-main
+- Assertions: Sanitized preview and retained reader; No executable or remote image content
+- Evidence: `artifacts/test-drives/11.png` (local generated artifact)
+
+## 12. Long title and wide table work on narrow keyboard UI
+
+- Timestamp: 2026-10-12T00:02:06.380Z
+- Duration: 106ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Keyboard Enter: #save
+- Assertions: No document overflow at360px; Table and save remain keyboard accessible
+- Evidence: `artifacts/test-drives/12.png` (local generated artifact)
+
+## 13. Duplicate share operations stay bounded when offline
+
+- Timestamp: 2026-10-12T00:02:06.512Z
+- Duration: 595ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Two explicit SAVE requests exercise overlapping operation state; Extension message: SAVE; Extension message: SAVE; Extension message: LIBRARY
+- Assertions: One retained pending copy; No unbounded duplicate operation or false public success
+- Evidence: `artifacts/test-drives/13.png` (local generated artifact)
+
+## 14. Pending share retry preserves local recovery on network failure
+
+- Timestamp: 2026-10-12T00:02:07.116Z
+- Duration: 56ms
+- Result: **PASS**
+- Actions: Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-actions button:first-child; Extension message: LIBRARY
+- Assertions: Retry fails honestly and stays recoverable
+- Evidence: `artifacts/test-drives/14.png` (local generated artifact)
+
+## 15. Cancel pending sharing keeps the local copy
+
+- Timestamp: 2026-10-12T00:02:07.211Z
+- Duration: 11ms
+- Result: **PASS**
+- Actions: Extension message: LIBRARY
+- Assertions: Cancellation preserves local bytes and warns about public retention
+- Evidence: `artifacts/test-drives/15.png` (local generated artifact)
+
+## 16. Contributor count and byte limits evict whole old copies
+
+- Timestamp: 2026-10-12T00:02:07.244Z
+- Duration: 1350ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Extension message: LIBRARY; Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Extension message: LIBRARY
+- Assertions: 100-record quota enforced; 16MiB quota evicts oldest whole records
+- Evidence: `artifacts/test-drives/16.png` (local generated artifact)
+
+## 17. Offline Popular reports failure and restores its action
+
+- Timestamp: 2026-10-12T00:02:08.604Z
+- Duration: 48ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Keyboard Enter: #browse
+- Assertions: No metadata-only cards; Clear recoverable network error
+- Evidence: `artifacts/test-drives/17.png` (local generated artifact)
+
+## 18. Offline rating refresh shows an error without losing the readable copy
+
+- Timestamp: 2026-10-12T00:02:08.693Z
+- Duration: 143ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed only shared-reader-facing status in disposable writer IDB for offline-rating UI; no publication claim; Keyboard Enter: [data-view="library"]; Keyboard Enter: #library-list .item-main; Keyboard Enter: #refresh-ratings; Keyboard Enter: #helpful
+- Assertions: Refresh and vote fail clearly; Local body remains readable
+- Evidence: `artifacts/test-drives/18.png` (local generated artifact)
+
+## 19. Saved removal and clear update the library
+
+- Timestamp: 2026-10-12T00:02:08.882Z
+- Duration: 119ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Seed a sealed original synthetic preview (edge-state setup only); Extension message: SAVE; Keyboard Enter: [data-view="library"]; Focus after removal: {"tag":"BUTTON","id":""}; Keyboard Enter: #clear; Focus after clear: {"tag":"BUTTON","id":""}; Extension message: LIBRARY
+- Assertions: Removal and clear reflect actual local storage; Focus observations are recorded for final audit
+- Evidence: `artifacts/test-drives/19.png` (local generated artifact)
+
+## 20. Dashboard navigation and rolling trends stay metadata-only
+
+- Timestamp: 2026-10-12T00:02:09.025Z
+- Duration: 119ms
+- Result: **PASS**
+- Actions: Extension message: CLEAR; Keyboard Enter: [data-view="activity"]; Keyboard Enter: [data-view="storage"]; Keyboard Enter: [data-view="articles"]
+- Assertions: Actual localhost dashboard; Seven trend buckets and narrow navigation; No article body or public network activity
+- Evidence: `artifacts/test-drives/20.png` (local generated artifact)

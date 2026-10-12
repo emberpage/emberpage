@@ -211,10 +211,10 @@ try {
     );
     assert.match(
       await review.locator('#status').textContent(),
-      /^Cached for readers/
+      /^Shared publicly/
     );
     results.steps.push(
-      'Keyboard Cache for readers: production upload, listing acknowledgment, local share state'
+      'Keyboard Share publicly: production upload, listing acknowledgment, local share state'
     );
     await mkdir('artifacts', { recursive: true });
     await review.screenshot({

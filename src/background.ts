@@ -284,7 +284,7 @@ export function startBackground() {
         const article: unknown = data[`draft:${message.id}`];
         if (!article)
           return yield* reject(
-            "This preview expired. Capture the article again.",
+            "This preview expired. Open the article and choose Preview this article again.",
           );
         return yield* Schema.decodeUnknownEffect(draftSchema)(article).pipe(
           Effect.mapError(failure),
@@ -307,18 +307,18 @@ export function startBackground() {
         );
         if (!data[`draft:${message.id}`])
           return yield* reject(
-            "This preview expired. Capture the article again.",
+            "This preview expired. Open the article and choose Preview this article again.",
           );
         const article = yield* Schema.decodeUnknownEffect(draftSchema)(
           data[`draft:${message.id}`],
         ).pipe(Effect.mapError(failure));
         const seal = yield* io(() => sha256(snapshotSealInput(article)));
         if (data[`seal:${message.id}`] !== seal)
-          return yield* reject("The preview changed. Capture it again.");
+          return yield* reject("The preview changed. Open the article and choose Preview this article again.");
         if (article.imageLimitExceeded && message.textOnly !== true)
           return yield* reject(
             article.imageWarning ||
-              "Images exceed the cache limits. Choose Text only to save this copy.",
+              "The images are too large to save. Choose Text only.",
           );
         const result = yield* archive.saveEffect(
           articleForMode(article, message.textOnly === true),

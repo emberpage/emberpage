@@ -36,7 +36,7 @@ try {
   assert.match(await page.locator('#network-label').textContent(), /Idle/);
   await activate(page, '#reload');
   await page.waitForFunction(() => !document.querySelector('#reload').disabled);
-  assert.deepEqual(calls, [], 'Refresh local must not query the relay.');
+  assert.deepEqual(calls, [], 'Show saved results must not query the relay.');
   await store.commitMetadata(entries, []);
   store.appendEvent({ action: 'STORE', kind: 'storage', outcome: 'success', details: { entries: 2 } });
   await activate(page, '#reload');
@@ -64,7 +64,7 @@ try {
       await page.screenshot({ path: `artifacts/aggregator-${view}-${width}.png`, fullPage: true });
     }
   }
-  assert.match(await page.locator('#storage-list').textContent(), /Signed listings/);
+  assert.match(await page.locator('#storage-list').textContent(), /Article listings/);
   assert.match(await page.locator('#storage-list').textContent(), /2 records/);
   await activate(page, '[data-view="activity"]');
   assert.match(await page.locator('#event-list').textContent(), /STORE/);
@@ -74,7 +74,7 @@ try {
   await activate(page, '[data-view="articles"]');
   await activate(page, '#refresh');
   await page.waitForFunction(() => !document.querySelector('#refresh').disabled);
-  assert.match(await page.locator('#status').textContent(), /Relay refresh finished/);
+  assert.match(await page.locator('#status').textContent(), /Update finished/);
   assert.ok(calls.includes('listings') && calls.includes('votes'));
   await activate(page, '[data-view="articles"]');
   const focused = page.locator('#article-list a').first(); await focused.focus();

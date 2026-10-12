@@ -41,7 +41,7 @@ send('READ', { id })
     document.querySelector('#meta').textContent = [
       article.byline,
       hostname(article.url),
-      `Captured ${new Date(article.capturedAt).toLocaleString()}`
+      `Saved ${new Date(article.capturedAt).toLocaleString()}`
     ]
       .filter(Boolean)
       .join(' • ');
@@ -53,7 +53,7 @@ send('READ', { id })
       article.url
     );
     document.querySelector('#copy-label').textContent = shared
-      ? 'Community copy'
+      ? 'Shared copy'
       : 'Private copy';
     document.querySelector('#ratings').hidden = !shared;
     showRating(rating);

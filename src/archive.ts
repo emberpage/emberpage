@@ -134,7 +134,7 @@ export class ArticleArchive {
       > {
         if (!(yield* io(() => this.writer.setPending(copy.contentHash, true))))
           return yield* rejected(
-            "The local copy was removed. Capture it again.",
+            "The saved copy was removed. Open the article and choose Preview this article again.",
           );
         receipt = yield* io(() => this.receipts.get(copy.contentHash));
         if (
@@ -149,12 +149,12 @@ export class ArticleArchive {
             shared: false,
             localSaved: true,
             validationError:
-              "Sharing requires a complete article with at least 1,000 visible characters.",
+              "This copy is too short or incomplete to share. You can keep it on this device.",
           };
         }
         if (receipt && receipt.blobHash !== copy.blobHash)
           return yield* rejected(
-            "Discard the pending share before sharing a new capture.",
+            "Choose Cancel sharing in Saved before sharing a new copy.",
           );
         if (!receipt)
           receipt = yield* io(() =>
@@ -215,7 +215,7 @@ export class ArticleArchive {
   ) {
     const copy = yield* io(() => this.writer.getRecord(hash));
     if (!copy)
-      return yield* rejected("The local copy was removed. Capture it again.");
+      return yield* rejected("The saved copy was removed. Open the article and choose Preview this article again.");
     return yield* this.shareEffect(copy);
   });
   discardShareEffect = Effect.fn("ArticleArchive.discardShare")(function* (

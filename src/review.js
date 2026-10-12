@@ -35,7 +35,7 @@ async function save(share) {
   const action = document.querySelector(share ? '#share' : '#save');
   setControlsDisabled(true);
   try {
-    status(share ? 'Saving and sharing for readers…' : 'Saving your copy…');
+    status(share ? 'Saving and sharing publicly…' : 'Saving your copy…');
     const result = await send('SAVE', {
       id,
       share,
@@ -49,7 +49,7 @@ async function save(share) {
     }
     if (result.shareError) {
       status(
-        `${result.shareError} Saved on this device. Retry Cache for readers to share it.`,
+        `${result.shareError} Saved on this device. Choose Share publicly to retry.`,
         true
       );
       setControlsDisabled(false);
@@ -60,7 +60,7 @@ async function save(share) {
     status(
       result.warning ||
         (share
-          ? 'Cached for readers. Availability depends on the storage provider.'
+          ? 'Shared publicly. The hosting service may remove this copy.'
           : 'Saved on this device.')
     );
     const open = document.createElement('button');

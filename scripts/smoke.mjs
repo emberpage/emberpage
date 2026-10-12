@@ -65,7 +65,7 @@ try {
   await popup.reload();
   await popup.locator('#app').waitFor({ state: 'visible' });
   await popup.waitForFunction(() => !document.querySelector('#capture').disabled);
-  assert.equal(await worker.evaluate(() => chrome.offscreen.hasDocument()), false, 'Opening Read and Cache must not start the mesh.');
+  assert.equal(await worker.evaluate(() => chrome.offscreen.hasDocument()), false, 'Opening Popular and Save must not start a network session.');
   await popup.keyboard.press('Tab');
   assert.equal(await popup.evaluate(() => document.activeElement.dataset.view), 'read');
   await popup.keyboard.press('Tab');
@@ -115,10 +115,10 @@ try {
 
   assert.equal(publicNetworkCalls.length, 0, 'Private caching and reading must not publish or query a provider.');
   assert.equal((await call(popup, 'LOCAL_CATALOG')).length, 0, 'Private copies must not enter the popular list.');
-  await popup.getByRole('button', { name: /^Remove / }).click();
+  await popup.locator('#library-list').getByRole('button', { name: /^Remove / }).click();
   await popup.locator('#library-list .empty').waitFor();
 
-  console.log('PASS: keyboard Popular/Cache/Saved, private caching, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
+  console.log('PASS: keyboard Popular/Save/Saved, private caching, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
 } finally {
   await context?.close();
   await new Promise(resolve => server.close(resolve));

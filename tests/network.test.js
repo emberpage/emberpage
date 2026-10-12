@@ -106,7 +106,7 @@ test('reader rejects corrupt bytes before parsing and refuses provider or budget
   const mesh = new EmberNetwork({ fetch: async () => { calls++; const bytes = copy.bytes.slice(); bytes[0] ^= 1; return new Response(bytes); } });
   await assert.rejects(mesh.readArticle(listing), /hash|integrity/i);
   await assert.rejects(mesh.readArticle({ ...listing, provider: 'https://untrusted.example' }), /Invalid article file reference/);
-  await assert.rejects(mesh.readArticle(listing, { budget: { remainingBytes: listing.size - 1 } }), /budget is exhausted/);
+  await assert.rejects(mesh.readArticle(listing, { budget: { remainingBytes: listing.size - 1 } }), /search reached its download limit/);
   assert.equal(calls, 1);
 });
 
@@ -178,7 +178,7 @@ test('empty completed discovery differs from a refused or timed-out query', asyn
   const blocked = relay((frame, reply) => reply(['CLOSED', frame[1], 'restricted: query denied']));
   await assert.rejects(new NostrDirectory({ WebSocket: blocked.Socket }).queryListings(), /query denied/);
   const silent = relay(() => {});
-  await assert.rejects(new NostrDirectory({ WebSocket: silent.Socket, timeoutMs: 10 }).queryListings(), /timed out/);
+  await assert.rejects(new NostrDirectory({ WebSocket: silent.Socket, timeoutMs: 10 }).queryListings(), /directory took too long to respond/);
   assert.equal(silent.sockets[0].readyState, 3);
 });
 
@@ -242,7 +242,7 @@ test('a timed-out upload aborts its pending HTTP request and preserves the user-
     signal = options.signal;
     return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true }));
   } });
-  await assert.rejects(network.upload(copy), /Article upload timed out.*local copy is saved/);
+  await assert.rejects(network.upload(copy), /Sharing took too long.*copy is saved on this device/);
   assert.equal(signal.aborted, true);
 });
 

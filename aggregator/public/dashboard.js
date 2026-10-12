@@ -9,7 +9,7 @@ function status(text, error = false) {
 async function api(path, method = 'GET') {
   const response = await fetch(path, { method, cache: 'no-store', ...(method === 'POST' ? { headers: { 'X-EmberPage-Action': 'refresh' } } : {}) });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `The local aggregator returned ${response.status}.`);
+  if (!response.ok) throw new Error(data.error || `The local dashboard returned ${response.status}.`);
   return data;
 }
 function element(tag, className, text) {
@@ -27,12 +27,12 @@ function sourceUrl(raw) {
 function domain(raw) { return sourceUrl(raw)?.hostname.replace(/^www\./, '') || 'Source unavailable'; }
 function date(raw) { return Number.isFinite(raw) ? new Date(raw).toLocaleString() : 'Not reported'; }
 function age(raw) {
-  if (!Number.isFinite(raw)) return 'Capture time unavailable';
+  if (!Number.isFinite(raw)) return 'Save time unavailable';
   const minutes = Math.max(0, Math.floor((Date.now() - raw) / 60_000));
-  if (minutes < 1) return 'Captured just now';
-  if (minutes < 60) return `Captured ${minutes}m ago`;
-  if (minutes < 1440) return `Captured ${Math.floor(minutes / 60)}h ago`;
-  return `Captured ${Math.floor(minutes / 1440)}d ago`;
+  if (minutes < 1) return 'Saved just now';
+  if (minutes < 60) return `Saved ${minutes}m ago`;
+  if (minutes < 1440) return `Saved ${Math.floor(minutes / 60)}h ago`;
+  return `Saved ${Math.floor(minutes / 1440)}d ago`;
 }
 function bytes(value) {
   if (!Number.isFinite(value) || value < 0) return 'Not reported';
@@ -67,7 +67,7 @@ function renderArticles() {
   const container = $('#article-list');
   const focusedId = document.activeElement.closest('.article-row')?.dataset.id;
   container.replaceChildren();
-  if (!articles.length) empty(container, snapshot.articles.length ? 'No articles match these filters.' : 'The directory is empty.', snapshot.articles.length ? 'Try another source, category, or search.' : 'The indexer checks the relay every minute while this server runs. You can also choose Refresh from relay.');
+  if (!articles.length) empty(container, snapshot.articles.length ? 'No articles match these filters.' : 'The directory is empty.', snapshot.articles.length ? 'Try another source, category, or search.' : 'This dashboard checks for articles every minute while it runs. You can also choose Check for updates.');
   for (const article of articles) {
     const row = element('article', 'article-row');
     row.dataset.id = `${article.urlHash}:${article.contentHash}`;
@@ -102,7 +102,7 @@ function renderEvents() {
   const openIds = new Set([...container.querySelectorAll('details[open]')].map(event => event.dataset.id));
   const focusedId = document.activeElement.closest('.event')?.dataset.id;
   container.replaceChildren();
-  if (!events.length) empty(container, filter === 'all' ? 'No recorded operations yet.' : 'No events match this filter.', 'The journal updates when an operation finishes.');
+  if (!events.length) empty(container, filter === 'all' ? 'No recorded operations yet.' : 'No events match this filter.', 'Activity appears when an operation finishes.');
   for (const event of events) {
     const row = element('details', 'event'), summary = element('summary', '');
     row.dataset.id = event.id; row.open = openIds.has(event.id);
@@ -117,44 +117,44 @@ function renderEvents() {
 }
 function renderStorage() {
   const container = $('#storage-list'); container.replaceChildren();
-  for (const [key, title] of [['catalog', 'Signed listings'], ['ratings', 'Signed ratings'], ['journal', 'Operation journal'], ['trends', 'Hourly observation counters']]) {
+  for (const [key, title] of [['catalog', 'Article listings'], ['ratings', 'Public ratings'], ['journal', 'Activity log'], ['trends', 'Hourly totals']]) {
     const store = snapshot.storage[key];
     if (!store) continue;
     const section = element('section', 'store'), header = element('div', 'store-head');
     header.append(element('h3', '', title), element('span', 'store-total', `${Number.isFinite(store.count) ? store.count : 'Unreported'} ${store.count === 1 ? 'record' : 'records'} · ${bytes(store.bytes)}`));
     section.append(header);
-    for (const [value, limit, label, format] of [[store.count, store.maxRecords, 'Record budget', String], [store.bytes, store.maxBytes, 'Data budget', bytes]]) {
+    for (const [value, limit, label, format] of [[store.count, store.maxRecords, 'Record limit', String], [store.bytes, store.maxBytes, 'Space limit', bytes]]) {
       if (!Number.isFinite(value) || !Number.isFinite(limit) || limit <= 0) continue;
       const line = element('div', 'budget-line'); line.append(element('span', '', label), element('span', '', `${format(value)} / ${format(limit)}`));
       const meter = element('meter', ''); meter.min = 0; meter.max = limit; meter.value = value; meter.setAttribute('aria-label', `${title}: ${label}`);
       section.append(line, meter);
     }
     const details = element('div', 'store-details');
-    if (Number.isFinite(store.nextExpiryAt)) details.append(element('span', '', `Next expiry ${date(store.nextExpiryAt)}`));
+    if (Number.isFinite(store.nextExpiryAt)) details.append(element('span', '', `Next removal ${date(store.nextExpiryAt)}`));
     if (Number.isFinite(store.ttlMs)) details.append(element('span', '', `Expires after ${(store.ttlMs / 3_600_000).toFixed(0)} hours`));
     if (store.evictionPolicy) details.append(element('span', '', store.evictionPolicy));
-    else details.append(element('span', '', key === 'journal' ? 'Expires after 7 days. Newer events fit first.' : '30-day discovery window. Oldest records leave first.'));
+    else details.append(element('span', '', key === 'journal' ? 'Expires after 7 days. Newer events fit first.' : 'Kept for 30 days. Oldest records are removed first.'));
     section.append(details); container.append(section);
   }
   $('#database-size').hidden = !Number.isFinite(snapshot.storage.dbBytes);
-  $('#database-size').textContent = `SQLite file on disk: ${bytes(snapshot.storage.dbBytes)}. Includes database engine overhead; data budgets count serialized record bytes.`;
+  $('#database-size').textContent = `Database file: ${bytes(snapshot.storage.dbBytes)}. This includes storage overhead; the limits above count only stored records.`;
 }
 function renderNetwork(network) {
   const pending = Number.isFinite(network.pending) ? network.pending : null;
-  $('#network-label').textContent = pending > 0 ? 'Checking metadata' : network.indexing ? 'Rolling index on' : network.lastQuerySucceeded ? 'Last query succeeded' : 'Idle';
+  $('#network-label').textContent = pending > 0 ? 'Checking listings' : network.indexing ? 'Automatic updates on' : network.lastQuerySucceeded ? 'Last update succeeded' : 'Idle';
   $('#network-dot').className = `state-dot${pending > 0 ? ' progress' : network.indexing || network.connected ? ' connected' : ''}`;
   const peers = Array.isArray(network.peers) ? network.peers.length : Number.isFinite(network.peers) ? network.peers : null;
-  $('#network-detail').textContent = [peers !== null ? `${peers} open relay connections` : 'Peer count unavailable', pending !== null ? `${pending} pending` : ''].filter(Boolean).join(' · ');
-  $('#network-observed').textContent = Number.isFinite(network.nextRunAt) ? `Next index ${date(network.nextRunAt)}` : `Observed ${date(network.observedAt)}`;
+  $('#network-detail').textContent = [peers !== null ? `${peers} server connections` : 'Connection count unavailable', pending !== null ? `${pending} pending` : ''].filter(Boolean).join(' · ');
+  $('#network-observed').textContent = Number.isFinite(network.nextRunAt) ? `Next update ${date(network.nextRunAt)}` : `Checked ${date(network.observedAt)}`;
   const interval = Number.isFinite(network.intervalMs) ? network.intervalMs >= 60_000 ? `${network.intervalMs / 60_000} ${network.intervalMs === 60_000 ? 'minute' : 'minutes'}` : `${network.intervalMs / 1000} ${network.intervalMs === 1000 ? 'second' : 'seconds'}` : null;
-  $('.sidebar-note').textContent = network.indexing ? `The server indexes public metadata ${interval ? `every ${interval}` : 'automatically'}. Article bodies stay off disk.` : 'The rolling index is off. Choose Refresh from relay to update public metadata.';
+  $('.sidebar-note').textContent = network.indexing ? `The dashboard checks public article listings ${interval ? `every ${interval}` : 'automatically'}. It does not download articles.` : 'Automatic updates are off. Choose Check for updates to get new listings.';
   $('#network-error').hidden = !network.error; $('#network-error').textContent = network.error || '';
 }
 function render(data) {
   const articlesChanged = !snapshot || JSON.stringify(data.articles) !== JSON.stringify(snapshot.articles);
   const eventsChanged = !snapshot || JSON.stringify(data.events) !== JSON.stringify(snapshot.events);
   snapshot = data;
-  $('#snapshot-time').textContent = `Local snapshot ${date(data.generatedAt)}`;
+  $('#snapshot-time').textContent = `Saved results ${date(data.generatedAt)}`;
   if (articlesChanged) {
     const selected = $('#source').value;
     $('#source').replaceChildren(new Option('All sources', ''));
@@ -171,7 +171,7 @@ function render(data) {
     row.append(text); trends.append(row);
   }
   const refresh = data.lastRefresh;
-  $('#refresh-summary').textContent = refresh ? `Last relay refresh ${date(refresh.finishedAt)}. ${['discovered', 'indexed', 'votes', 'rejected', 'duplicates'].filter(key => Number.isFinite(refresh[key])).map(key => `${refresh[key]} ${key}`).join('; ')}.` : 'No relay refresh recorded. Categories use public title and byline metadata.';
+  $('#refresh-summary').textContent = refresh ? `Last update ${date(refresh.finishedAt)}. ${['discovered', 'indexed', 'votes', 'rejected', 'duplicates'].filter(key => Number.isFinite(refresh[key])).map(key => `${refresh[key]} ${key}`).join('; ')}.` : 'No update recorded. Categories use article titles and author names.';
 }
 let loading = false, snapshotReadFailed = false;
 async function load(relay = false, quiet = false) {
@@ -179,18 +179,18 @@ async function load(relay = false, quiet = false) {
   loading = true;
   if (!quiet) {
     $('#reload').disabled = $('#refresh').disabled = true;
-    status(relay ? 'Refreshing signed directory metadata…' : 'Reading local metadata…');
+    status(relay ? 'Checking for new articles…' : 'Loading saved results…');
   }
   if (relay) { $('#network-label').textContent = 'Refreshing'; $('#network-dot').className = 'state-dot progress'; }
   try {
     render(await api(relay ? '/api/refresh' : '/api/dashboard', relay ? 'POST' : 'GET'));
-    if (!quiet || (!relay && snapshotReadFailed)) status(relay ? 'Relay refresh finished.' : '');
+    if (!quiet || (!relay && snapshotReadFailed)) status(relay ? 'Update finished.' : '');
     if (!relay) snapshotReadFailed = false;
   } catch (error) {
     if (!relay) snapshotReadFailed = true;
-    status(`${error.message} Refresh local to read the last saved snapshot.`, true);
+    status(`${error.message} Choose Show saved results to try loading the saved results.`, true);
     if (snapshot) renderNetwork(snapshot.network);
-    else { $('#network-label').textContent = 'Unavailable'; $('#network-detail').textContent = 'The local aggregator did not respond.'; $('#article-count').textContent = 'Snapshot unavailable'; }
+    else { $('#network-label').textContent = 'Unavailable'; $('#network-detail').textContent = 'The local dashboard did not respond.'; $('#article-count').textContent = 'Saved results unavailable'; }
   } finally { loading = false; $('#reload').disabled = $('#refresh').disabled = false; }
 }
 for (const button of document.querySelectorAll('[data-view]')) button.addEventListener('click', () => {

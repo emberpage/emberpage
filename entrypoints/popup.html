@@ -20,7 +20,7 @@
           <p class="note">
             Sharing makes the copy, title, and link public. Share only content
             you have permission to distribute. Network providers can see your
-            IP.
+            IP address.
           </p>
         </details>
         <button id="accept" class="primary full">Get started</button>
@@ -28,7 +28,7 @@
       <section id="app" hidden>
         <nav class="tabs" aria-label="Sections">
           <button data-view="read" aria-current="page">Popular</button
-          ><button data-view="cache">Cache</button
+          ><button data-view="cache">Save</button
           ><button data-view="library">Saved</button>
         </nav>
         <section id="read-view">
@@ -38,9 +38,9 @@
           </button>
           <div id="catalog-list" class="item-list"></div>
           <details>
-            <summary>About community copies</summary>
+            <summary>About shared copies</summary>
             <p class="quiet">
-              Formatting checks and ratings do not verify accuracy.
+              Copies are checked for readability. Their facts are not verified.
             </p>
           </details>
         </section>
@@ -60,13 +60,13 @@
           </div>
           <div id="library-list" class="item-list"></div>
           <details>
-            <summary>Cache storage</summary>
+            <summary>Storage space</summary>
             <p class="quiet">
-              When the cache fills, the least recently read copies are removed.
+              When storage fills up, copies you haven’t read recently are removed.
             </p>
           </details>
           <button id="clear" class="text-button danger" hidden>
-            Clear local copies
+            Remove all saved copies
           </button>
         </section>
       </section>

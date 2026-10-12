@@ -161,7 +161,7 @@ nav button[aria-current] {
   overflow-wrap: anywhere;
 }
 .sidebar-note {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--muted);
   margin: 22px 0 0;
@@ -299,7 +299,7 @@ select {
 }
 .votes span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   display: block;
 }
 .read-button {
@@ -376,7 +376,7 @@ select {
 .event-title small {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 3px;
 }
 .event-duration {
@@ -514,7 +514,7 @@ select {
     gap: 8px;
   }
   .header-actions button {
-    font-size: 12px;
+    font-size: 13px;
     padding: 10px 12px;
   }
 }
@@ -537,7 +537,7 @@ select {
   .event-duration {
     grid-column: 2;
     text-align: left;
-    font-size: 11px;
+    font-size: 12px;
   }
   .event-data {
     margin-left: 0;
@@ -594,7 +594,7 @@ select {
   }
   .network p {
     margin: 0;
-    font-size: 11px;
+    font-size: 12px;
   }
   .network #network-error {
     display: none;
@@ -621,7 +621,7 @@ select {
   }
   .header-actions button {
     flex: 1;
-    font-size: 12px;
+    font-size: 13px;
   }
   .view-intro {
     margin-top: 26px;
@@ -642,13 +642,13 @@ select {
     font-size: 12px;
   }
   .event-time {
-    font-size: 10px;
+    font-size: 12px;
   }
   .event-data {
     grid-template-columns: 100px minmax(0, 1fr);
     padding: 13px;
     gap: 10px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .store-head {
     gap: 12px;
@@ -673,7 +673,7 @@ select {
 a.read-button {
   display: inline-block;
   text-decoration: none;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   border-radius: 8px;
   padding: 10px 13px;
