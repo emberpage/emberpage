@@ -49,7 +49,7 @@ function empty(container, title, detail) {
 function originalLink(raw, label) {
   const url = sourceUrl(raw);
   if (!url) return element('span', 'quiet', 'Source unavailable');
-  const link = element('a', 'read-button', label);
+  const link = element('a', 'article-link', label);
   link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer';
   return link;
 }
@@ -71,19 +71,21 @@ function renderArticles() {
   for (const article of articles) {
     const row = element('article', 'article-row');
     row.dataset.id = `${article.urlHash}:${article.contentHash}`;
-    const body = element('div', 'article-body'); body.append(element('h3', '', article.title || 'Untitled article'));
+    const body = element('div', 'article-body');
+    const title = element('h3', ''); title.append(originalLink(article.url, article.title || 'Untitled article')); body.append(title);
     const meta = element('div', 'article-meta');
-    meta.append(element('span', 'article-source', domain(article.url)), element('span', '', categoryFor(article)), element('span', '', age(article.capturedAt)));
+    meta.append(element('span', 'article-source', domain(article.url)));
     if (article.byline) meta.append(element('span', '', article.byline));
     body.append(meta);
-    const actions = element('div', 'row-actions'), votes = element('div', 'votes');
+    const details = element('div', 'article-details'), votes = element('div', 'votes');
+    details.append(element('p', 'quiet', `${categoryFor(article)} · ${age(article.capturedAt)}`));
     for (const [label, value] of [['Helpful', article.rating?.upvotes], ['Incomplete', article.rating?.downvotes], ['Score', article.score ?? article.rating?.score]]) {
       const metric = element('div', '');
       metric.append(element('strong', '', Number.isFinite(value) ? label === 'Score' ? value.toFixed(2) : String(value) : '—'), element('span', '', label));
       votes.append(metric);
     }
-    actions.append(votes, originalLink(article.url, 'Open original'));
-    row.append(body, actions); container.append(row);
+    details.append(votes); body.append(details);
+    row.append(body); container.append(row);
     if (row.dataset.id === focusedId) row.querySelector('a')?.focus({ preventScroll: true });
   }
 }
@@ -188,7 +190,7 @@ async function load(relay = false, quiet = false) {
     if (!relay) snapshotReadFailed = false;
   } catch (error) {
     if (!relay) snapshotReadFailed = true;
-    status(`${error.message} Choose Show saved results to try loading the saved results.`, true);
+    status(`${error.message} Open Tools and choose Reload saved results to try again.`, true);
     if (snapshot) renderNetwork(snapshot.network);
     else { $('#network-label').textContent = 'Unavailable'; $('#network-detail').textContent = 'The local dashboard did not respond.'; $('#article-count').textContent = 'Saved results unavailable'; }
   } finally { loading = false; $('#reload').disabled = $('#refresh').disabled = false; }
@@ -198,9 +200,18 @@ for (const button of document.querySelectorAll('[data-view]')) button.addEventLi
   button.setAttribute('aria-current', 'page');
   for (const view of ['articles', 'activity', 'storage']) $(`#${view}-view`).hidden = view !== button.dataset.view;
   $('#view-title').textContent = button.textContent;
+  $('#tools').open = false;
+  $('#main').focus({ preventScroll: true });
 });
 $('#search').addEventListener('input', renderArticles);
-for (const id of ['source', 'category', 'ranking']) $(`#${id}`).addEventListener('change', renderArticles);
+$('#show-article-details').addEventListener('change', event => {
+  document.body.classList.toggle('show-article-details', event.target.checked);
+});
+for (const id of ['source', 'category', 'ranking']) $(`#${id}`).addEventListener('change', () => {
+  const active = Number(Boolean($('#source').value)) + Number(Boolean($('#category').value)) + Number($('#ranking').value !== 'popular');
+  $('#filters > summary').textContent = active ? `Filters (${active})` : 'Filters';
+  renderArticles();
+});
 $('#event-filter').addEventListener('change', renderEvents);
 $('#reload').addEventListener('click', () => load());
 $('#refresh').addEventListener('click', () => load(true));

@@ -32,6 +32,7 @@ const id = Schema.String;
 const messageSchema = Schema.Union([
   Schema.Struct(command("ACCEPT")),
   Schema.Struct({ ...command("CAPTURE"), tabId: Schema.Int }),
+  Schema.Struct({ ...command("SAVE_PAGE"), tabId: Schema.Int }),
   Schema.Struct({
     ...command("CAPTURE_IMAGE_PIXELS"),
     captureToken: Schema.String,
@@ -214,16 +215,17 @@ export function startBackground() {
     }
     const { accepted } = yield* io(() => chrome.storage.local.get("accepted"));
     if (!accepted)
-      return yield* reject("Open Ember Page and choose Get started first.");
+      return yield* reject("Open Ember Page before saving or sharing.");
     switch (message.action) {
-      case "CAPTURE": {
+      case "CAPTURE":
+      case "SAVE_PAGE": {
         const tabId = message.tabId;
         const tab = yield* io(() => chrome.tabs.get(tabId));
         if (!tab.url) return yield* reject("Could not read this page URL.");
         const url = tab.url;
         yield* Effect.try({ try: () => normalizeUrl(url), catch: failure });
         if (captures.has(tabId))
-          return yield* reject("This page is already preparing a preview.");
+          return yield* reject("This page is already being prepared.");
         yield* io(() =>
           chrome.scripting.executeScript({
             target: { tabId },
@@ -266,6 +268,13 @@ export function startBackground() {
           imageLimitExceeded: result.imageLimitExceeded === true,
           imageWarning: result.imageWarning || "",
         };
+        if (message.action === "SAVE_PAGE" && !article.imageLimitExceeded) {
+          const saved = yield* archive.saveEffect(articleForMode(article, false), {
+            share: false,
+          });
+          yield* openPage("reader", saved.contentHash);
+          return true;
+        }
         const id = crypto.randomUUID();
         const seal = yield* io(() => sha256(snapshotSealInput(article)));
         yield* io(() =>

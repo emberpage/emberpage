@@ -58,7 +58,6 @@ send('READ', { id })
     document.querySelector('#ratings').hidden = !shared;
     showRating(rating);
     document.querySelector('#copy-note').hidden = !shared;
-    document.querySelector('#divider').hidden = false;
-    status('');
+    status(params.get('notice') || '');
   })
   .catch((error) => status(error.message, true));

@@ -10,67 +10,42 @@
   <body class="popup">
     <header class="brand">
       <img class="logo" src="/icons/logo.png" alt="" width="32" height="32" /><strong>Ember Page</strong>
+      <details id="options" class="header-options">
+        <summary>Options</summary>
+        <div class="options-panel">
+          <button id="previewMenu" class="text-button" disabled>Preview before saving</button>
+          <button id="browse" class="text-button">Refresh popular articles</button>
+          <p class="quiet">Shared copies are checked for readability. Their facts are not verified.</p>
+          <p class="quiet">Sharing makes your copy, title, and link public. Network providers can see your IP address.</p>
+          <p class="quiet">When storage fills up, copies you haven’t read recently are removed.</p>
+          <button id="manage" class="text-button" hidden>Manage saved articles</button>
+          <button id="clear" class="text-button danger" hidden>Remove all saved copies</button>
+        </div>
+      </details>
     </header>
     <main>
-      <section id="welcome" hidden>
-        <h1>Save and read articles</h1>
-        <p>Keep articles on this device, or share a copy with readers.</p>
-        <details>
-          <summary>Sharing and privacy</summary>
-          <p class="note">
-            Sharing makes the copy, title, and link public. Share only content
-            you have permission to distribute. Network providers can see your
-            IP address.
-          </p>
-        </details>
-        <button id="accept" class="primary full">Get started</button>
-      </section>
-      <section id="app" hidden>
-        <nav class="tabs" aria-label="Sections">
-          <button data-view="read" aria-current="page">Popular</button
-          ><button data-view="cache">Save</button
-          ><button data-view="library">Saved</button>
-        </nav>
-        <section id="read-view">
-          <h1>Popular articles</h1>
-          <button id="browse" class="primary full">
-            Browse popular articles
-          </button>
-          <div id="catalog-list" class="item-list"></div>
-          <details>
-            <summary>About shared copies</summary>
-            <p class="quiet">
-              Copies are checked for readability. Their facts are not verified.
-            </p>
-          </details>
-        </section>
-        <section id="cache-view" hidden>
+      <section id="app">
+        <section id="cache-view" class="capture-section">
           <div class="page-summary">
             <span id="domain" class="domain">Current page</span>
             <h1 id="page-title">Open an article to start.</h1>
           </div>
-          <button id="capture" class="primary full" disabled>
-            Preview this article
-          </button>
+          <button id="capture" class="primary full" disabled>Save article</button>
         </section>
-        <section id="library-view" hidden>
-          <div class="section-title">
-            <h1>Saved articles</h1>
-            <span id="saved-count"></span>
-          </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+        <nav class="tabs" aria-label="Articles">
+          <button data-view="library" aria-current="page">Saved</button>
+          <button data-view="read">Popular</button>
+        </nav>
+        <section id="library-view">
+          <div class="section-title"><h2>Saved articles</h2><span id="saved-count"></span><button id="done" class="text-button" hidden>Done</button></div>
           <div id="library-list" class="item-list"></div>
-          <details>
-            <summary>Storage space</summary>
-            <p class="quiet">
-              When storage fills up, copies you haven’t read recently are removed.
-            </p>
-          </details>
-          <button id="clear" class="text-button danger" hidden>
-            Remove all saved copies
-          </button>
+        </section>
+        <section id="read-view" hidden>
+          <h2>Popular articles</h2>
+          <div id="catalog-list" class="item-list"></div>
         </section>
       </section>
-      <p id="status" class="status" role="status" aria-live="polite"></p>
     </main>
     <script type="module" src="/src/popup.js"></script>
   </body>

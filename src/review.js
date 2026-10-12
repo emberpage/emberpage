@@ -11,6 +11,8 @@ function renderPreview() {
     capturedArticle.url
   );
   setControlsDisabled(false);
+  if (capturedArticle.imageLimitExceeded && !textOnly.checked)
+    document.querySelector('#article-options').open = true;
   status(
     capturedArticle.imageLimitExceeded && !textOnly.checked
       ? capturedArticle.imageWarning
@@ -56,22 +58,11 @@ async function save(share) {
       action.focus();
       return;
     }
-    document.querySelector('#review-controls').hidden = true;
-    status(
-      result.warning ||
-        (share
-          ? 'Shared publicly. The hosting service may remove this copy.'
-          : 'Saved on this device.')
-    );
-    const open = document.createElement('button');
-    open.className = 'primary';
-    open.textContent = 'Read saved copy';
-    open.setAttribute('aria-describedby', 'status');
-    open.addEventListener('click', () =>
-      busy(open, () => send('OPEN_COPY', { id: result.contentHash }))
-    );
-    document.querySelector('#status').after(open);
-    open.focus();
+    const reader = new URL('reader.html', location.href);
+    reader.searchParams.set('id', result.contentHash);
+    const notice = result.warning || (share ? 'Shared publicly.' : '');
+    if (notice) reader.searchParams.set('notice', notice);
+    location.replace(reader.href);
   } catch (error) {
     status(error.message, true);
     setControlsDisabled(false);

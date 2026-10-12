@@ -15,9 +15,9 @@ Ember Page is not in the Chrome Web Store yet.
 
 ## Save, share, and read
 
-- **Save:** open an article, then choose **Preview this article** in Ember Page. Review the copy and choose **Save privately** or **Share publicly**. Choose **Text only** to leave out images and formatting.
-- **Popular:** choose **Browse popular articles**, then pick one to read. Copies are checked for readability, but their facts are not verified.
-- **Saved:** read or remove your saved copies. If sharing failed, you can retry or cancel it here.
+- **Save:** open an article and click **Save article** in Ember Page. A private copy opens, ready to read.
+- **Read:** saved copies are shown first. Choose **Popular** to find shared copies, then pick one to read. Copies are checked for readability; their facts are not verified.
+- **More:** **Options** lets you preview before saving or manage saved copies. In a preview, **More options** offers **Share publicly**, **Text only**, and discard. The reader’s **Article options** includes the original link and ratings.
 
 Nothing is saved or shared until you choose an action. Ratings are sent only when you press a rating button.
 

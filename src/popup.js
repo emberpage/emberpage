@@ -1,11 +1,10 @@
 import { send, status, busy, hostname } from './ui.js';
 const $ = (selector) => document.querySelector(selector);
 let currentTab;
+let managing = false;
 async function init() {
   const { accepted } = await chrome.storage.local.get('accepted');
-  $('#welcome').hidden = !!accepted;
-  $('#app').hidden = !accepted;
-  if (!accepted) return;
+  if (!accepted) await send('ACCEPT');
   const [tabs, catalog] = await Promise.all([
     chrome.tabs.query({ active: true, currentWindow: true }),
     send('LOCAL_CATALOG')
@@ -19,30 +18,26 @@ async function init() {
     ? currentTab.title || currentTab.url
     : 'Open an article to start.';
   $('#capture').disabled = !supported;
+  $('#previewMenu').disabled = !supported;
   renderCatalog(catalog);
+  await library();
 }
-$('#accept').addEventListener('click', () =>
-  busy($('#accept'), async () => {
-    await send('ACCEPT');
-    await init();
-  })
-);
 for (const button of document.querySelectorAll('[data-view]'))
   button.addEventListener('click', async () => {
-    for (const tab of document.querySelectorAll('[data-view]'))
-      tab.removeAttribute('aria-current');
-    button.setAttribute('aria-current', 'page');
-    for (const view of ['read', 'cache', 'library'])
-      $(`#${view}-view`).hidden = view !== button.dataset.view;
-    status('');
-    if (button.dataset.view === 'library') {
-      try {
-        await library();
-      } catch (error) {
-        status(error.message, true);
-      }
+    selectView(button.dataset.view);
+    if (button.dataset.view === 'read') await browse(button);
+    else {
+      try { await library(); } catch (error) { status(error.message, true); }
     }
   });
+function selectView(view) {
+  for (const tab of document.querySelectorAll('[data-view]')) {
+    if (tab.dataset.view === view) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
+  }
+  for (const name of ['read', 'library']) $(`#${name}-view`).hidden = name !== view;
+  status('');
+}
 function item(title, detail, open) {
   const row = document.createElement('div');
   row.className = 'item';
@@ -68,17 +63,14 @@ function empty(container, text) {
 function renderCatalog(entries) {
   const container = $('#catalog-list');
   container.replaceChildren();
-  $('#browse').textContent = entries.length
-    ? 'Refresh popular articles'
-    : 'Browse popular articles';
   if (!entries.length)
-    empty(container, 'Browse to find complete article copies.');
+    empty(container, 'No shared articles found yet.');
   for (const entry of entries) {
     const helpful = entry.rating?.upvotes || 0;
     container.append(
       item(
         entry.title,
-        `${hostname(entry.url)} · ${helpful} helpful ${helpful === 1 ? 'vote' : 'votes'} · Read`,
+        `${hostname(entry.url)} · ${helpful} helpful ${helpful === 1 ? 'vote' : 'votes'}`,
         async () => {
           await send('OPEN_COPY', { id: entry.contentHash });
           status('Article opened in a new tab.');
@@ -87,44 +79,39 @@ function renderCatalog(entries) {
     );
   }
 }
-$('#browse').addEventListener('click', async () => {
+async function browse(button) {
   let entries;
-  await busy(
-    $('#browse'),
-    async () => {
-      status('Checking article copies…');
-      const result = await send('CATALOG');
-      entries = result.entries;
-      const warning = result.warning;
-      status(
-        warning ||
-          (entries.length
-            ? 'Choose an article to read.'
-            : 'No readable copies found. You can share an article from Save.')
-      );
-    },
-    'Checking…'
-  );
+  await busy(button, async () => {
+    status('Finding articles…');
+    const result = await send('CATALOG');
+    entries = result.entries;
+    status(result.warning || (entries.length ? '' : 'No readable copies found. Preview an article to share it.'));
+  });
   if (entries) renderCatalog(entries);
+}
+$('#browse').addEventListener('click', async () => {
+  selectView('read');
+  await browse($('#browse'));
 });
-$('#capture').addEventListener('click', () =>
-  busy(
-    $('#capture'),
-    async () => {
-      await send('CAPTURE', { tabId: currentTab.id });
-      status('Preview opened in a new tab.');
-    },
-    'Preparing preview…'
-  )
-);
+function capture(button, action) {
+  return busy(button, async () => {
+    await send(action, { tabId: currentTab.id });
+    status(action === 'SAVE_PAGE' ? 'Article opened in a new tab.' : 'Preview opened in a new tab.');
+  }, action === 'SAVE_PAGE' ? 'Saving…' : 'Preparing preview…');
+}
+$('#capture').addEventListener('click', () => capture($('#capture'), 'SAVE_PAGE'));
+$('#previewMenu').addEventListener('click', () => capture($('#previewMenu'), 'CAPTURE'));
 async function library() {
   const records = await send('LIBRARY');
   $('#saved-count').textContent = String(records.length);
   $('#clear').hidden = !records.length;
+  $('#manage').hidden = !records.length;
+  $('#done').hidden = !managing;
+  $('#saved-count').hidden = managing;
   const container = $('#library-list');
   container.replaceChildren();
   if (!records.length)
-    empty(container, 'Open an article and choose Save to keep your first copy.');
+    empty(container, 'Save an article to keep your first copy.');
   for (const record of records) {
     const detail = record.pendingShare
       ? 'Sharing unfinished'
@@ -138,6 +125,7 @@ async function library() {
     );
     const controls = document.createElement('div');
     controls.className = 'item-actions';
+    controls.hidden = !managing;
     if (record.pendingShare) {
       const retry = document.createElement('button');
       retry.className = 'small-button';
@@ -152,6 +140,7 @@ async function library() {
             !result.shared
           );
           await library();
+          focusLibrary();
         })
       );
       controls.append(retry);
@@ -162,6 +151,7 @@ async function library() {
         busy(discard, async () => {
           await send('DISCARD_SHARE', { id: record.contentHash });
           await library();
+          focusLibrary();
           status(
             'Sharing canceled. An already uploaded copy may still be public.'
           );
@@ -177,7 +167,7 @@ async function library() {
       busy(remove, async () => {
         await send('DELETE', { id: record.contentHash, source: record.source });
         await library();
-        ($('#library-list .item-main') || $('[data-view="library"]')).focus();
+        focusLibrary();
       })
     );
     controls.append(remove);
@@ -185,11 +175,32 @@ async function library() {
     container.append(row);
   }
 }
+$('#manage').addEventListener('click', async () => {
+  managing = true;
+  selectView('library');
+  $('#options').open = false;
+  try {
+    await library();
+    ($('#library-list .item-actions button') || $('#done')).focus();
+  } catch (error) { status(error.message, true); }
+});
+$('#done').addEventListener('click', async () => {
+  managing = false;
+  try {
+    await library();
+    focusLibrary();
+  } catch (error) { status(error.message, true); }
+});
+function focusLibrary() {
+  ($('#library-list .item-main') || $('[data-view="library"]')).focus();
+}
 $('#clear').addEventListener('click', () =>
   busy($('#clear'), async () => {
     await send('CLEAR');
+    managing = false;
     await library();
     renderCatalog([]);
+    $('#options').open = false;
     $('[data-view="library"]').focus();
     status(
       'Saved copies removed. Public copies may still be available.'
