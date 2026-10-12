@@ -1,12 +1,12 @@
 # Testing and limitations
 
-## Testing release: 0.1.8
+## Testing release: 0.1.9
 
 This release passed **94 automated tests**, strict TypeScript, linting, Effect diagnostics, architecture and unused-code checks, release-manifest validation, and extension/image/dashboard smoke tests. **20 sequential fixture scenarios** covered private save/read/remove, preview validation, text-only recovery, malformed content, offline failures, repeated actions, pending shares and eviction. These tests publish nothing.
 
 Layout checks cover 360, 800 and 1,280 px widths, keyboard navigation, local fonts, light/dark themes and shadcn Typeset article styling. Release CI and ZIP checksums are available on [GitHub](https://github.com/emberpage/emberpage/releases).
 
-**Known issue:** native Chrome for Testing saved a Wikipedia article privately, but its lead image displayed “Image unavailable.” The isolated image suite passes with temporary permissions; it does not prove real toolbar image capture. The toolbar save/read flow itself passed with unchanged production permissions.
+Native Chrome for Testing captured all six Wikipedia images with unchanged production permissions. An earlier “image unavailable” report misread the accessibility label of successfully embedded images. Missing descriptions now remain empty; only failed image captures get an unavailable placeholder. Isolated image fixtures use temporary permissions and do not establish native toolbar behavior on their own.
 
 ## Public services
 
