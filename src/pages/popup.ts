@@ -1,6 +1,7 @@
+import { BoundaryError, errorMessage } from '../domain/errors.ts';
 import { Effect } from 'effect';
-import type { PopularEntry } from './types.ts';
-import { send, status, busy, hostname, element, control, errorMessage, sendEffect } from './ui.ts';
+import type { PopularEntry } from '../domain/types.ts';
+import { send, status, busy, hostname, element, control, sendEffect } from './ui.ts';
 const $ = element;
 const buttonAt = (selector: string) => control(selector, 'button');
 let currentTab: chrome.tabs.Tab | undefined;
@@ -10,7 +11,7 @@ async function init() {
   const accepted = !!stored && typeof stored === 'object' && 'accepted' in stored && stored.accepted === true;
   if (!accepted) await send('ACCEPT');
   const { tabs, catalog } = await Effect.runPromise(Effect.all({
-    tabs: Effect.tryPromise({ try: () => chrome.tabs.query({ active: true, currentWindow: true }), catch: (error) => new Error(errorMessage(error)) }),
+    tabs: Effect.tryPromise({ try: () => chrome.tabs.query({ active: true, currentWindow: true }), catch: (error) => BoundaryError.from(error, errorMessage(error)) }),
     catalog: sendEffect('LOCAL_CATALOG')
   }, { concurrency: 2 }));
   [currentTab] = tabs;

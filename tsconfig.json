@@ -9,7 +9,18 @@
       "node"
     ],
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "anyUnknownInErrorContext": "error",
+          "unsafeEffectTypeAssertion": "error",
+          "strictEffectProvide": "error",
+          "leakingRequirements": "error"
+        }
+      }
+    ]
   },
   "include": [
     "*.ts",

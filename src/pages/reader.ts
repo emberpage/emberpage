@@ -1,8 +1,9 @@
+import { errorMessage } from '../domain/errors.ts';
 import { Effect } from 'effect';
-import type { Rating } from './types.ts';
-import { send, status, hostname, busy, element, control, errorMessage, sendEffect } from './ui.ts';
-import { sanitizeArticle } from './sanitize.ts';
-import { normalizeUrl } from './core/url.ts';
+import type { Rating } from '../domain/types.ts';
+import { send, status, hostname, busy, element, control, sendEffect } from './ui.ts';
+import { sanitizeArticle } from '../extraction/sanitize.ts';
+import { normalizeUrl } from '../domain/url.ts';
 const params = new URLSearchParams(location.search);
 const id = params.get('id');
 function showRating(rating: Rating) {

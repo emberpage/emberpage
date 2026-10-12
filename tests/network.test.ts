@@ -1,13 +1,14 @@
-import type {ArticleCopy,RatingTarget} from '../src/types.ts';
+import type {ArticleCopy,RatingTarget} from '../src/domain/types.ts';
 import type {Event,EventTemplate} from 'nostr-tools';
 import test from 'node:test';
 import { Effect, Schema } from 'effect';
 import assert from 'node:assert/strict';
 import { finalizeEvent, generateSecretKey, verifyEvent } from 'nostr-tools/pure';
-import { EmberNetwork, PROVIDER, createBlossomAuthorization } from '../src/network.ts';
+import { installationIdentity } from '../src/platform/identity.ts';
+import { EmberNetwork, PROVIDER, createBlossomAuthorization } from '../src/transport/network.ts';
 import { NostrDirectory, LISTING_KIND, RATING_KIND, LISTING_TAG, RATING_TAG,
-  validateListingEvent, validateVoteEvent, DISCOVERY_WINDOW_MS } from '../src/network/nostr.ts';
-import { encodeArticle } from '../src/core/article.ts';
+  validateListingEvent, validateVoteEvent, DISCOVERY_WINDOW_MS } from '../src/directory/nostr.ts';
+import { encodeArticle } from '../src/domain/article.ts';
 
 const secret = generateSecretKey();
 const now = Date.now();
@@ -60,7 +61,10 @@ await test('sharing uploads exact plain JSON before signing a metadata-only ackn
       assert.ok(authorization.tags.some(tag => tag[0] === 'x' && tag[1] === copy.blobHash));
       return Promise.resolve(uploadResponse(copy));
     } });
-  const listing = await mesh.publishArticle(copy);
+  const listing = await Effect.runPromise(Effect.gen(function* () {
+    const receipt = yield* mesh.uploadEffect(copy);
+    return yield* mesh.publishListingEffect(copy, receipt);
+  }));
   assert.deepEqual(trace, ['upload', 'relay']);
   assert.equal(listing.contentHash, copy.contentHash);
   assert.equal(Object.hasOwn(listing, 'content'), false);
@@ -73,11 +77,11 @@ await test('a failed listing can be retried with the upload receipt without uplo
   const network = relay((frame, reply) => { publishes++; reply(['OK', signedFrame(frame).id, publishes > 1, 'restricted: testing partial failure']); });
   const mesh = new EmberNetwork({ WebSocket: network.Socket, identity: () => Promise.resolve(secret), now: () => now,
     fetch: () => { uploads++; return Promise.resolve(uploadResponse(copy)); } });
-  const receipt = await mesh.upload(copy);
-  await assert.rejects(mesh.publishListing(copy, receipt), /restricted: testing partial failure/);
-  assert.equal((await mesh.publishListing(copy, receipt)).blobHash, copy.blobHash);
+  const receipt = await Effect.runPromise(mesh.uploadEffect(copy));
+  await assert.rejects(Effect.runPromise(mesh.publishListingEffect(copy, receipt)), /restricted: testing partial failure/);
+  assert.equal((await Effect.runPromise(mesh.publishListingEffect(copy, receipt))).blobHash, copy.blobHash);
   assert.equal(uploads, 1); assert.equal(publishes, 2);
-  await assert.rejects(mesh.publishListing(copy, { ...receipt, blobHash: 'f'.repeat(64) }), /receipt does not match/);
+  await assert.rejects(Effect.runPromise(mesh.publishListingEffect(copy, { ...receipt, blobHash: 'f'.repeat(64) })), /receipt does not match/);
   assert.equal(publishes, 2);
 });
 
@@ -87,7 +91,7 @@ await test('provider receipts must match exact file hash, byte size, MIME and co
     const mesh = new EmberNetwork({ identity: () => Promise.resolve(secret), fetch: async () => {
       const receipt = Schema.decodeUnknownSync(Schema.Record(Schema.String,Schema.Unknown))(await uploadResponse(copy).json()); return Response.json({ ...receipt, ...change });
     } });
-    await assert.rejects(mesh.upload(copy), /receipt does not match/);
+    await assert.rejects(Effect.runPromise(mesh.uploadEffect(copy)), /receipt does not match/);
   }
 });
 
@@ -95,35 +99,35 @@ await test('reader uses only the qualified CDN path, verifies file bytes and bin
   const copy = await fixture();
   const listing = await validateListingEvent(listingEvent(copy)); assert(listing);
   const budget = { remainingBytes: copy.size * 2 };
-  const mesh = new EmberNetwork({ fetch: (url, options) => {
+  const mesh = new EmberNetwork({ identity: () => Promise.resolve(secret), fetch: (url, options) => {
       assert(options);
     assert.equal(url, `https://media.primal.net/uploads2/${copy.blobHash[0]}/${copy.blobHash.slice(1, 3)}/${copy.blobHash.slice(3, 5)}/${copy.blobHash}.json`);
     assert.equal(options.redirect, 'error'); assert.equal(options.credentials, 'omit'); return Promise.resolve(new Response(new Uint8Array(copy.bytes)));
   } });
-  assert.deepEqual((await mesh.readArticle(listing, { budget })).article, copy.article);
+  assert.deepEqual((await Effect.runPromise(mesh.readArticleEffect(listing, { budget }))).article, copy.article);
   assert.equal(budget.remainingBytes, copy.size);
-  await assert.rejects(mesh.readArticle({ ...listing, title: 'A forged title' }), /metadata does not match/);
-  await assert.rejects(mesh.readArticle({ ...listing, contentHash: 'f'.repeat(64) }), /file does not match/);
+  await assert.rejects(Effect.runPromise(mesh.readArticleEffect({ ...listing, title: 'A forged title' })), /metadata does not match/);
+  await assert.rejects(Effect.runPromise(mesh.readArticleEffect({ ...listing, contentHash: 'f'.repeat(64) })), /file does not match/);
 });
 
 await test('reader rejects corrupt bytes before parsing and refuses provider or budget violations before fetching', async () => {
   const copy = await fixture(); const listing = await validateListingEvent(listingEvent(copy)); assert(listing);
   let calls = 0;
-  const mesh = new EmberNetwork({ fetch: () => { calls++; const bytes = copy.bytes.slice(); bytes[0] = (bytes[0] || 0) ^ 1; return Promise.resolve(new Response(bytes)); } });
-  await assert.rejects(mesh.readArticle(listing), /hash|integrity/i);
-  await assert.rejects(mesh.readArticle({ ...listing, provider: 'https://untrusted.example' }), /Invalid article file reference/);
-  await assert.rejects(mesh.readArticle(listing, { budget: { remainingBytes: listing.size - 1 } }), /search reached its download limit/);
+  const mesh = new EmberNetwork({ identity: () => Promise.resolve(secret), fetch: () => { calls++; const bytes = copy.bytes.slice(); bytes[0] = (bytes[0] || 0) ^ 1; return Promise.resolve(new Response(bytes)); } });
+  await assert.rejects(Effect.runPromise(mesh.readArticleEffect(listing)), /hash|integrity/i);
+  await assert.rejects(Effect.runPromise(mesh.readArticleEffect({ ...listing, provider: 'https://untrusted.example' })), /Invalid article file reference/);
+  await assert.rejects(Effect.runPromise(mesh.readArticleEffect(listing, { budget: { remainingBytes: listing.size - 1 } })), /search reached its download limit/);
   assert.equal(calls, 1);
 });
 
 await test('streamed response limits apply even without a trustworthy Content-Length', async () => {
   const copy = await fixture(); const listing = await validateListingEvent(listingEvent(copy)); assert(listing);
   let cancelled = false;
-  const mesh = new EmberNetwork({ fetch: () => Promise.resolve(new Response(new ReadableStream({
+  const mesh = new EmberNetwork({ identity: () => Promise.resolve(secret), fetch: () => Promise.resolve(new Response(new ReadableStream({
     start(controller) { controller.enqueue(new Uint8Array(listing.size + 1)); },
     cancel() { cancelled = true; },
   }))) });
-  await assert.rejects(mesh.readArticle(listing), /response exceeds the file limit/);
+  await assert.rejects(Effect.runPromise(mesh.readArticleEffect(listing)), /response exceeds the file limit/);
   assert.equal(cancelled, true);
 });
 
@@ -156,7 +160,7 @@ await test('read-only discovery needs no identity, bounds results at 100 and clo
     reply(['EOSE', frame[1]]);
   });
   const mesh = new EmberNetwork({ WebSocket: network.Socket, identity: () => { throw new Error('Read must not access signing key.'); } });
-  assert.equal((await mesh.queryListings()).length, 1);
+  assert.equal((await Effect.runPromise(mesh.queryListingsEffect())).length, 1);
   assert.ok(network.trace.some(frame => frame[0] === 'CLOSE'));
   assert.equal(network.sockets[0]?.readyState, 3);
 });
@@ -188,16 +192,53 @@ await test('empty completed discovery differs from a refused or timed-out query'
   assert.equal(silent.sockets[0]?.readyState, 3);
 });
 
-await test('default browser fetch retains its global receiver', () => {
+await test('default browser fetch retains its global receiver without reading the sharing key', async () => {
+  const copy = await fixture();
+  const listing = await validateListingEvent(listingEvent(copy)); assert(listing);
   const previous = globalThis.fetch;
   globalThis.fetch = function () {
     assert.equal(this, globalThis);
     throw new Error('receiver verified');
   };
   try {
-    const network = new EmberNetwork();
-    assert.throws(() => network.fetch('https://example.com'), /receiver verified/);
+    const network = new EmberNetwork({identity: () => { throw new Error('Reading must not access the signing key.'); }});
+    await assert.rejects(Effect.runPromise(network.readArticleEffect(listing)), /receiver verified/);
   } finally { globalThis.fetch = previous; }
+});
+
+await test('Chrome identity rejects corruption, resets failed writes and coalesces successful persistence', async () => {
+  const previous = globalThis.chrome;
+  let stored: unknown = 'damaged';
+  let failWrite = true, reads = 0, writes = 0;
+  Object.defineProperty(globalThis, 'chrome', {configurable: true, writable: true, value: {
+    storage: {local: {
+      get(key: string) { reads++; return Promise.resolve({[key]: stored}); },
+      set(value: Record<string, unknown>) {
+        writes++;
+        if (failWrite) return Promise.reject(new Error('Fixture storage write failed.'));
+        stored = value.emberpageSigningKey;
+        return Promise.resolve();
+      },
+    }},
+  }});
+  try {
+    await assert.rejects(installationIdentity(), /identity is damaged/);
+    assert.equal(writes, 0);
+    stored = undefined;
+    await assert.rejects(installationIdentity(), /storage write failed/);
+    failWrite = false;
+    const [first, second] = await Promise.all([installationIdentity(), installationIdentity()]);
+    assert(first && second);
+    assert.deepEqual(first, second);
+    assert.equal(first.length, 32);
+    assert.equal(stored, [...first].map(byte => byte.toString(16).padStart(2, '0')).join(''));
+    assert.equal(reads, 3);
+    assert.equal(writes, 2);
+    assert.deepEqual(await installationIdentity(), first);
+    assert.equal(reads, 3);
+  } finally {
+    Object.defineProperty(globalThis, 'chrome', {configurable: true, writable: true, value: previous});
+  }
 });
 
 await test('listing field limits match the canonical article and ledger contract', async () => {
@@ -213,11 +254,11 @@ await test('rejected HTTP responses abort the download even before reading its b
   const copy = await fixture();
   const listing = await validateListingEvent(listingEvent(copy), { now }); assert(listing);
   let signal:AbortSignal|undefined;
-  const network = new EmberNetwork({ now:()=>now, fetch: (_url,options)=>{
+  const network = new EmberNetwork({ identity: () => Promise.resolve(secret), now:()=>now, fetch: (_url,options)=>{
     signal=options?.signal ?? undefined;
     return Promise.resolve(new Response('too large',{headers:{'Content-Length':String(copy.size+1)}}));
   }});
-  await assert.rejects(network.readArticle(listing), /file limit/);
+  await assert.rejects(Effect.runPromise(network.readArticleEffect(listing)), /file limit/);
   assert.equal(signal?.aborted,true);
 });
 
@@ -226,7 +267,7 @@ await test('interrupting a streamed download cancels its reader and aborts the f
   const listing = await validateListingEvent(listingEvent(copy), { now }); assert(listing);
   let signal:AbortSignal|undefined,response:Response|undefined,cancelled=false;
   const {promise:reading,resolve:announceRead}=Promise.withResolvers<void>();
-  const network = new EmberNetwork({ fetch: (_url, options) => {
+  const network = new EmberNetwork({ identity: () => Promise.resolve(secret), fetch: (_url, options) => {
     assert(options);
     signal = options?.signal ?? undefined;
     response = new Response(new ReadableStream({ pull() { announceRead(); }, cancel() { cancelled = true; } }));
@@ -250,13 +291,13 @@ await test('a timed-out upload aborts its pending HTTP request and preserves the
     const currentSignal=signal;assert(currentSignal);
     return new Promise<Response>((_resolve, reject) => currentSignal.addEventListener('abort', () => reject(new Error('aborted')), { once: true }));
   } });
-  await assert.rejects(network.upload(copy), /Sharing took too long.*copy is saved on this device/);
+  await assert.rejects(Effect.runPromise(network.uploadEffect(copy)), /Sharing took too long.*copy is saved on this device/);
   assert.equal(signal?.aborted, true);
 });
 
 await test('interrupting discovery closes the relay socket and subscription immediately', async () => {
   const transport = relay(() => {});
-  const network = new EmberNetwork({ WebSocket: transport.Socket });
+  const network = new EmberNetwork({ identity: () => Promise.resolve(secret), WebSocket: transport.Socket });
   const controller = new AbortController();
   const result = Effect.runPromise(network.queryListingsEffect(), { signal: controller.signal });
   while (!transport.trace.length) await new Promise(resolve => setImmediate(resolve));

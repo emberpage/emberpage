@@ -2,9 +2,9 @@ import { Effect } from 'effect';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { encodeArticle } from '../src/core/article.ts';
-import { filterCandidates, rankCandidates } from '../src/core/candidates.ts';
-import { inspectArticle } from '../src/inspect.ts';
+import { encodeArticle } from '../src/domain/article.ts';
+import { filterCandidates, rankCandidates } from '../src/domain/candidates.ts';
+import { inspectArticle } from '../src/extraction/inspect.ts';
 globalThis.document = new JSDOM('').window.document;
 const now = Date.now(),
   text =

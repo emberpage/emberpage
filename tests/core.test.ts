@@ -9,9 +9,9 @@ import {
   MAX_ARTICLE_BYTES,
   sha256,
   hashUrl
-} from '../src/core/article.ts';
-import { LocalVault, ShareReceipts, recordBytes } from '../src/core/storage.ts';
-import { normalizeUrl } from '../src/core/url.ts';
+} from '../src/domain/article.ts';
+import { LocalVault, ShareReceipts, recordBytes } from '../src/storage/indexeddb.ts';
+import { normalizeUrl } from '../src/domain/url.ts';
 const now = Date.now(),
   article = {
     url: 'https://example.org/story?id=7',

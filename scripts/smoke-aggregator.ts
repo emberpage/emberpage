@@ -6,8 +6,8 @@ import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { createAggregatorServer } from '../aggregator/server.ts';
 import { AggregatorStore } from '../aggregator/store.ts';
-import { hashUrl } from '../src/core/article.ts';
-import { PROVIDER } from '../src/network/nostr.ts';
+import { hashUrl } from '../src/domain/article.ts';
+import { PROVIDER } from '../src/directory/nostr.ts';
 
 // Isolated, explicitly named metadata fixtures exercise the actual local HTTP server and UI.
 // This test never publishes fixtures to the public relay or retrieves article bodies.

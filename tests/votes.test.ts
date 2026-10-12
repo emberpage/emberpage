@@ -6,12 +6,12 @@ import {
   VoteLedger,
   VOTE_WINDOW_MS,
   POPULARITY_WINDOW_MS
-} from '../src/core/votes.ts';
+} from '../src/storage/votes.ts';
 const now = Date.now(),
   hash = (number: number) => number.toString(16).padStart(64, '0');
 const vote = (
   number: number,
-  fields: Partial<import('../src/types.ts').Vote> = {}
+  fields: Partial<import('../src/domain/types.ts').Vote> = {}
 ) => ({
   id: hash(number),
   pubkey: hash(number + 100),

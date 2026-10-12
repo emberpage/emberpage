@@ -41,9 +41,9 @@ type HourBin = {
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { normalizeUrl } from '../src/core/url.ts';
-import { hashUrl } from '../src/core/article.ts';
-import { PROVIDER, DISCOVERY_WINDOW_MS } from '../src/network/nostr.ts';
+import { normalizeUrl } from '../src/domain/url.ts';
+import { hashUrl } from '../src/domain/article.ts';
+import { PROVIDER, DISCOVERY_WINDOW_MS } from '../src/directory/nostr.ts';
 const byteSize: (value: unknown) => number = (value: unknown) =>
   new TextEncoder().encode(JSON.stringify(value)).length;
 const TrendSchema = Schema.Struct({

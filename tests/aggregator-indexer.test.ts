@@ -1,5 +1,5 @@
 import type {MetadataDirectory,QueryDiagnostics} from '../aggregator/types.ts';
-import type {RatingTarget} from '../src/types.ts';
+import type {RatingTarget} from '../src/domain/types.ts';
 import test from "node:test";
 import { Effect, Predicate } from "effect";
 import assert from "node:assert/strict";
@@ -242,7 +242,7 @@ await test("typed relay timeout keeps its error code through metadata decoding a
 
 
 await test('actual directory timeout keeps a stable code without matching message prose', async () => {
-  const {NostrDirectory} = await import('../src/network/nostr.ts');
+  const {NostrDirectory} = await import('../src/directory/nostr.ts');
   class SilentSocket {
     readyState = 1;
     onopen:(()=>void)|null=null; onclose:(()=>void)|null=null; onerror:(()=>void)|null=null; onmessage:((event:{data:unknown})=>void)|null=null;

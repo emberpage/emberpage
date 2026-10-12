@@ -2,12 +2,12 @@ import { Effect } from 'effect';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { indexedDB } from 'fake-indexeddb';
-import { hashUrl } from '../src/core/article.ts';
+import { hashUrl } from '../src/domain/article.ts';
 import {
   CatalogLedger,
   validateCatalogEntry,
   LISTING_WINDOW_MS
-} from '../src/core/catalog.ts';
+} from '../src/storage/catalog.ts';
 const now = Date.now(),
   hash = (number: number) => number.toString(16).padStart(64, '0');
 async function entry(number: number, createdAt = now) {

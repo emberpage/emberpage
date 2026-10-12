@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AggregatorStore } from '../aggregator/store.ts';
-import { DISCOVERY_WINDOW_MS } from '../src/network/nostr.ts';
+import { DISCOVERY_WINDOW_MS } from '../src/directory/nostr.ts';
 import { listing, vote } from './aggregator-fixture.ts';
 await test('SQLite persists bounded public fields only and deduplicates signed event ids across refreshes', () =>
   Effect.runPromise(

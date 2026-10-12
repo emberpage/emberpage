@@ -1,9 +1,9 @@
 import { Predicate } from 'effect';
-type Vote = import('../types.ts').Vote;
+type Vote = import('../domain/types.ts').Vote;
 type StoredVote = Vote & {
   key: string;
 };
-import { IndexedRecords, recordBytes } from './storage.ts';
+import { IndexedRecords, recordBytes } from './indexeddb.ts';
 export const VOTE_WINDOW_MS: number = 30 * 24 * 60 * 60 * 1000,
   POPULARITY_WINDOW_MS: number = 7 * 24 * 60 * 60 * 1000;
 const HASH: RegExp = /^[a-f0-9]{64}$/;

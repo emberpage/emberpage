@@ -2,8 +2,8 @@ import { Effect } from 'effect';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { sanitizeArticle } from '../src/sanitize.ts';
-import { captureArticleEffect } from '../src/content.ts';
+import { sanitizeArticle } from '../src/extraction/sanitize.ts';
+import { captureArticleEffect } from '../src/extraction/content.ts';
 
 
 async function capture(doc: Document, options: {captureToken?: string} = {}) {

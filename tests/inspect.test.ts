@@ -2,8 +2,8 @@ import { Effect } from 'effect';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { inspectArticle } from '../src/inspect.ts';
-import { captureArticle } from '../src/content.ts';
+import { inspectArticle } from '../src/extraction/inspect.ts';
+import { captureArticle } from '../src/extraction/content.ts';
 
 function inspect(content: string, textContent = 'A falsely claimed long article') {
   globalThis.document = new JSDOM('').window.document;

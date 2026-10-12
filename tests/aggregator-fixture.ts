@@ -1,8 +1,8 @@
 import { Schema } from 'effect';
 import { ListingSchema } from '../aggregator/types.ts';
 import type { Listing, Rating } from '../aggregator/types.ts';
-import { hashUrl } from '../src/core/article.ts';
-import { PROVIDER } from '../src/network/nostr.ts';
+import { hashUrl } from '../src/domain/article.ts';
+import { PROVIDER } from '../src/directory/nostr.ts';
 export async function listing(
   now = Date.now(),
   overrides: Partial<Listing> & Record<string, unknown> = {}

@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
-import { control, element } from '../src/ui.ts';
+import { control, element } from '../src/pages/ui.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -23,7 +23,7 @@ void test('Save and preview wait for the selected tab; Popular loads only on req
     Object.defineProperty(globalThis, 'chrome', { configurable: true, writable: true, value: previousChrome });
     dom.window.close();
   });
-  await Effect.runPromise(Effect.tryPromise(() => import('../src/popup.ts')));
+  await Effect.runPromise(Effect.tryPromise(() => import('../src/pages/popup.ts')));
   await new Promise(setImmediate);
   const capture = control('#capture', 'button');
   assert.equal(control('#previewMenu', 'button').disabled, true);

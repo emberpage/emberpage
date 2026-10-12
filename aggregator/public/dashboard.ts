@@ -1,3 +1,4 @@
+import { BoundaryError } from '../../src/domain/errors.ts';
 import { Effect, Option as EffectOption, Schema } from 'effect';
 import { ListingSchema } from '../types.ts';
 const StatsSchema = Schema.Struct({ count: Schema.Number, bytes: Schema.Number, maxRecords: Schema.Number, maxBytes: Schema.Number, ttlMs: Schema.Number, evictionPolicy: Schema.String, nextExpiryAt: Schema.optionalKey(Schema.Number) });
@@ -12,7 +13,7 @@ const DashboardSchema = Schema.Struct({
 });
 type DashboardSnapshot = typeof DashboardSchema.Type;
 type DashboardArticle = DashboardSnapshot['articles'][number];
-const failure = (error: unknown) => error instanceof Error ? error : new Error('The local dashboard did not respond.');
+const failure = (error: unknown) => BoundaryError.from(error, error instanceof Error ? error.message : 'The local dashboard did not respond.');
 function $(selector: '#source' | '#category' | '#ranking' | '#event-filter'): HTMLSelectElement;
 function $(selector: '#search' | '#show-article-details'): HTMLInputElement;
 function $(selector: '#reload' | '#refresh'): HTMLButtonElement;
@@ -38,7 +39,7 @@ const apiEffect = Effect.fn('Dashboard.request')(function* (path: string, method
   const raw: unknown = yield* Effect.tryPromise({ try: () => response.json(), catch: failure });
   if (!response.ok) {
     const error = Schema.decodeUnknownOption(Schema.Struct({ error: Schema.String }))(raw);
-    return yield* Effect.fail(new Error(EffectOption.isSome(error) ? error.value.error : `The local dashboard returned ${response.status}.`));
+    return yield* BoundaryError.from(raw, EffectOption.isSome(error) ? error.value.error : `The local dashboard returned ${response.status}.`);
   }
   return yield* Schema.decodeUnknownEffect(DashboardSchema)(raw).pipe(Effect.mapError(failure));
 });

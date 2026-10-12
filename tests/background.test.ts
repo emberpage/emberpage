@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { indexedDB } from 'fake-indexeddb';
 import { JSDOM } from 'jsdom';
-import { inspectArticle } from '../src/inspect.ts';
+import { inspectArticle } from '../src/extraction/inspect.ts';
 globalThis.indexedDB = indexedDB;
 globalThis.document = new JSDOM('<!doctype html>').window.document;
 type Handler=(message:unknown,sender:chrome.runtime.MessageSender,respond:(response:unknown)=>void)=>unknown;
@@ -66,18 +66,20 @@ const fakeChrome = {
   scripting: { executeScript: ():Promise<unknown[]> => Promise.resolve([]) },
   tabs: {
     get(id:number) {
-      return Promise.resolve({ id, url: article.url, active: true });
+      return Promise.resolve({ id, url: article.url, active: true, windowId:1 });
     },
-    sendMessage() {
+    sendMessage(this:void,_id:number,_request:{captureToken:string}) {
       return Promise.resolve({ ok: true, article, ...captureFlags });
     },
+    query(this:void,_options:{active:boolean,windowId:number}) {return Promise.resolve([{id:1,url:article.url,active:true,windowId:1}]);},
+    captureVisibleTab(this:void,_windowId:number,_options:{format:string}) {return Promise.resolve("data:image/png;base64,AAAA");},
     create(value:{url:string}) {
       opened.push(value); return Promise.resolve();
     }
   }
 };
 Object.defineProperty(globalThis,'chrome',{value:fakeChrome,writable:true,configurable:true});
-const { startBackground } = await import('../src/background.ts');
+const { startBackground } = await import('../src/extension.ts');
 assert.equal(listener, undefined, 'Importing workflows must not register listeners');
 startBackground();
 const sender = {
@@ -174,4 +176,41 @@ await test('same-tab capture reserves before injection and releases after failur
     fakeChrome.scripting.executeScript=original;
     assert.equal((await message('CAPTURE',{tabId:1})).ok,true);
   }finally{release();fakeChrome.scripting.executeScript=original;}
+});
+
+await test('authorized screenshot quota is confined to the active capture and its token expires on completion',async()=>{
+  const originalSend=fakeChrome.tabs.sendMessage,originalPixels=fakeChrome.tabs.captureVisibleTab,originalNow=Date.now;
+  let clock=originalNow(),shots=0,token='';
+  const pageSender={...sender,url:article.url,frameId:0,tab:{id:1,index:0,pinned:false,highlighted:false,windowId:1,active:true,incognito:false,frozen:false,selected:true,discarded:false,autoDiscardable:true,groupId:-1,lastAccessed:0}};
+  try{
+    Date.now=()=>clock;
+    fakeChrome.tabs.captureVisibleTab=()=>{shots++;clock+=550;return Promise.resolve('data:image/png;base64,AAAA');};
+    fakeChrome.tabs.sendMessage=async(_id,request)=>{
+      token=request.captureToken;
+      for(let index=0;index<10;index++)assert.equal((await message('CAPTURE_IMAGE_PIXELS',{captureToken:token},pageSender)).ok,true);
+      const over=await message('CAPTURE_IMAGE_PIXELS',{captureToken:token},pageSender);assert.equal(over.ok,false);assert.match(over.error || '',/preview/);
+      return originalSend(_id,request);
+    };
+    assert.equal((await message('CAPTURE',{tabId:1})).ok,true);
+    assert.equal(shots,10);
+    assert.equal((await message('CAPTURE_IMAGE_PIXELS',{captureToken:token},pageSender)).ok,false);
+    assert.equal(shots,10);
+  }finally{Date.now=originalNow;fakeChrome.tabs.sendMessage=originalSend;fakeChrome.tabs.captureVisibleTab=originalPixels;}
+});
+
+await test('navigation during a screenshot rejects the pixels rather than returning another page',async()=>{
+  const originalSend=fakeChrome.tabs.sendMessage,originalQuery=fakeChrome.tabs.query,originalPixels=fakeChrome.tabs.captureVisibleTab,originalNow=Date.now;
+  let navigated=false;const clock=originalNow()+10_000;
+  const pageSender={...sender,url:article.url,frameId:0,tab:{id:1,index:0,pinned:false,highlighted:false,windowId:1,active:true,incognito:false,frozen:false,selected:true,discarded:false,autoDiscardable:true,groupId:-1,lastAccessed:0}};
+  try{
+    Date.now=()=>clock;
+    fakeChrome.tabs.query=()=>Promise.resolve([{id:1,url:navigated?'https://example.org/another-page':article.url,active:true,windowId:1}]);
+    fakeChrome.tabs.captureVisibleTab=()=>{navigated=true;return Promise.resolve('data:image/png;base64,AAAA');};
+    fakeChrome.tabs.sendMessage=async(_id,request)=>{
+      const pixels=await message('CAPTURE_IMAGE_PIXELS',{captureToken:request.captureToken},pageSender);
+      assert.equal(pixels.ok,false);assert.match(pixels.error || '',/changed during image capture/);assert.equal(pixels.data,undefined);
+      return originalSend(_id,request);
+    };
+    assert.equal((await message('CAPTURE',{tabId:1})).ok,true);
+  }finally{Date.now=originalNow;fakeChrome.tabs.sendMessage=originalSend;fakeChrome.tabs.query=originalQuery;fakeChrome.tabs.captureVisibleTab=originalPixels;}
 });

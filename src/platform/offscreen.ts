@@ -1,7 +1,7 @@
 import { Predicate, Schema } from 'effect';
-import { inspectArticle } from './inspect.ts';
-import { errorMessage } from './ui.ts';
-import type { Inspection } from './types.ts';
+import { inspectArticle } from '../extraction/inspect.ts';
+import { errorMessage } from '../domain/errors.ts';
+import type { Inspection } from '../domain/types.ts';
 const InspectionRequest = Schema.Struct({
   target: Schema.Literals(['offscreen']),
   action: Schema.Literals(['INSPECT_ARTICLE']),
