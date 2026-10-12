@@ -9,6 +9,7 @@ const root = await mkdtemp(join(tmpdir(), 'emberpage-smoke-'));
 const title = `The coastal field notebook ${crypto.randomUUID().slice(0, 8)}`;
 const fixture = `<html><head><title>${title}</title></head><body><article><h1>${title}</h1>`
   + Array.from({ length: 12 }, (_, index) => `<p>Observation ${index + 1}. Along the coast, a team of researchers records the rhythm of the tides, the changing weather, and the seabirds that return each season. Their field notes reveal how carefully watching a place helps us understand its patterns over time.</p>`).join('')
+  + '<h2>Field methods</h2><p>Researchers use repeatable observations to compare seasons.</p><ul><li>Record the weather.</li><li>Return at the same tide.</li></ul><blockquote><p>A useful record survives the original link.</p></blockquote><pre><code>const tide = &quot;low&quot;;</code></pre>'
   + '<figure><img src="/figure.png" alt="A sample illustration"><figcaption>The article illustration.</figcaption></figure><table><tbody><tr>'
   + Array.from({ length: 12 }, (_, index) => `<td>LongColumnHeading${index}</td>`).join('')
   + '</tr></tbody></table><script>window.fixtureScript=true</script><img src="https://example.com/tracker.gif"></article></body></html>';
@@ -76,10 +77,24 @@ try {
   await review.waitForLoadState();
   await review.waitForFunction(() => !document.querySelector('#save').disabled);
   assert.ok((await review.locator('#article').textContent()).length >= 1000);
+  assert.equal(await review.locator('#article h2,#article ul,#article blockquote,#article pre').count(), 4);
   assert.equal(await review.locator('#article script,#article img[src^="http"]').count(), 0);
   assert.equal(await review.locator('#article img[src^="data:image/webp;base64,"]').count(), 1);
   await review.waitForFunction(() => document.querySelector('#article img')?.naturalWidth > 0);
   await mkdir('artifacts', { recursive: true });
+  assert.equal(await review.evaluate(async () => {
+    await document.fonts.load('18px Geist');
+    return document.fonts.check('18px Geist') && document.querySelector('#article').classList.contains('typeset');
+  }), true, 'Article uses local Geist and Typeset');
+  for (const colorScheme of ['light', 'dark']) {
+    await review.emulateMedia({ colorScheme });
+    await review.setViewportSize({ width: 800, height: 800 });
+    assert.equal(await review.locator('#article').evaluate(el => getComputedStyle(el).fontSize), '18px');
+    assert.equal(await review.evaluate(() => getComputedStyle(document.documentElement).colorScheme), colorScheme);
+    await review.screenshot({ path: `artifacts/review-${colorScheme}.png`, fullPage: true });
+  }
+  await review.emulateMedia({ colorScheme: 'light' });
+
   for (const width of [360, 800, 1280]) {
     await review.setViewportSize({ width, height: 800 });
     assert.equal(await review.evaluate(() => document.body.scrollWidth <= innerWidth), true, `Review overflows at ${width}`);

@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T00:55:00.104151+00:00",
+  "title": "Ember Page design",
+  "extensions": {
+    "shadows": [
+      {
+        "name": "selected-tab",
+        "value": "0 1px 2px #0000000d",
+        "purpose": "Selected popup tab only."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "document-narrow",
+        "value": "600px"
+      },
+      {
+        "name": "dashboard-narrow",
+        "value": "650px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "description": "Existing action styling.",
+      "html": "<button class=\"ds-primary\">Save article</button>",
+      "css": ".ds-primary{font:500 14px var(--font-sans);border:1px solid transparent;border-radius:var(--radius);padding:9px 15px;min-height:40px;cursor:pointer;background:var(--primary);color:var(--primary-foreground);}.ds-primary:hover{opacity:.9;}.ds-primary:focus-visible{outline:2px solid var(--ring);outline-offset:3px;}.ds-primary:disabled{opacity:.5;cursor:default;}",
+      "refersTo": "button-primary"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "description": "Existing action styling.",
+      "html": "<button class=\"ds-secondary\">Check for updates</button>",
+      "css": ".ds-secondary{font:500 14px var(--font-sans);border:1px solid transparent;border-radius:var(--radius);padding:9px 15px;min-height:40px;cursor:pointer;background:var(--secondary);color:var(--secondary-foreground);}.ds-secondary:hover{background:var(--accent);}.ds-secondary:focus-visible{outline:2px solid var(--ring);outline-offset:3px;}.ds-secondary:disabled{opacity:.5;cursor:default;}",
+      "refersTo": "button-secondary"
+    },
+    {
+      "name": "Text button",
+      "kind": "button",
+      "description": "Existing action styling.",
+      "html": "<button class=\"ds-text\">Open original</button>",
+      "css": ".ds-text{font:500 14px var(--font-sans);border:1px solid transparent;border-radius:var(--radius);padding:9px 15px;min-height:40px;cursor:pointer;background:transparent;color:var(--foreground);}.ds-text:hover{text-decoration:underline;text-underline-offset:3px;}.ds-text:focus-visible{outline:2px solid var(--ring);outline-offset:3px;}.ds-text:disabled{opacity:.5;cursor:default;}"
+    },
+    {
+      "name": "Search field",
+      "kind": "input",
+      "description": "Dashboard article search.",
+      "html": "<input class=\"ds-search\" type=\"search\" aria-label=\"Search articles\" placeholder=\"Search articles\">",
+      "css": ".ds-search{font:14px var(--font-sans);padding:8px 12px;border:1px solid var(--input);border-radius:calc(var(--radius) - 2px);background:var(--background);color:var(--foreground);min-height:40px;}.ds-search::placeholder{color:var(--muted-foreground);opacity:1;}.ds-search:focus-visible{outline:2px solid var(--ring);outline-offset:3px;}"
+    },
+    {
+      "name": "Archive navigation",
+      "kind": "nav",
+      "description": "The two existing popup views.",
+      "html": "<nav class=\"ds-tabs\" aria-label=\"Archive\"><button aria-current=\"page\">Archive</button><button>Community</button></nav>",
+      "css": ".ds-tabs{display:flex;gap:2px;padding:4px;background:var(--muted);border-radius:calc(var(--radius) + 2px);}.ds-tabs button{font:500 14px var(--font-sans);flex:1;min-height:34px;padding:6px 10px;border:1px solid transparent;border-radius:calc(var(--radius) - 2px);background:transparent;color:var(--muted-foreground);cursor:pointer;}.ds-tabs button[aria-current]{background:var(--background);color:var(--foreground);box-shadow:0 1px 2px #0000000d;}.ds-tabs button:hover{background:var(--accent);}.ds-tabs button:focus-visible{outline:2px solid var(--ring);outline-offset:3px;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Quiet archival workspace",
+    "overview": "A neutral shadcn theme, with the restraint of Notion and Vercel. The interface recedes so saved articles are easy to read.",
+    "keyCharacteristics": [
+      "Clear type hierarchy.",
+      "Subtle dividers and restrained controls.",
+      "Optional tools stay behind Options or Tools."
+    ],
+    "rules": [],
+    "dos": [
+      "Do keep capture, sharing, ratings, and serving explicit.",
+      "Do use shared theme tokens and preserve readable article content."
+    ],
+    "donts": [
+      "Don't add decorative cards, gradients, or extra actions to the main screen.",
+      "Don't download article bodies in the metadata-only dashboard."
+    ]
+  }
+}

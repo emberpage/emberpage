@@ -65,6 +65,18 @@ try {
   await page.locator('#ranking').focus(); await page.keyboard.press('n'); await page.keyboard.press('Enter');
   await activate(page, '#filters > summary');
   await mkdir('artifacts', { recursive: true });
+  assert.equal((await page.request.get(`${origin}/fonts/geist-sans.woff2`)).headers()['content-type'], 'font/woff2');
+  assert.equal(await page.evaluate(async () => {
+    await document.fonts.load('14px Geist');
+    return document.fonts.check('14px Geist');
+  }), true, 'Dashboard font loads locally');
+  for (const colorScheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme });
+    assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), colorScheme);
+    await page.screenshot({ path: `artifacts/aggregator-${colorScheme}.png`, fullPage: true });
+  }
+  await page.emulateMedia({ colorScheme: 'light' });
+
   for (const width of [360, 800, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     for (const view of ['articles', 'activity', 'storage']) {
