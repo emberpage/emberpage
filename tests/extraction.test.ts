@@ -252,12 +252,13 @@ void test('capture ignores author-like navigation guesses and retains explicit a
 
 void test('local references and inert MathML survive repeated sanitization', () => {
   fixture('');
-  const clean = sanitizeArticle('<script id="removed"></script><p><a href="#note">Note</a></p><p id="note">Reference</p><math display="block" onclick="bad()"><mfrac><mi>x</mi><mn>2</mn></mfrac><annotation-xml><script>bad()</script></annotation-xml></math>', 'https://example.com/story');
+  const clean = sanitizeArticle('<script id="removed"></script><p><a href="#note">Note</a></p><p id="note">Reference</p><a href="https://example.org/guide?utm_source=article#section">External section</a><math display="block" onclick="bad()"><mfrac><mi>x</mi><mn>2</mn></mfrac><annotation-xml><script>bad()</script></annotation-xml></math>', 'https://example.com/story');
   const element = document.createElement('div'); element.innerHTML = clean;
   const target = element.querySelector('p[id]');
   assert.equal(element.querySelector('a')?.getAttribute('href'), `#${target?.id}`);
   assert.equal(element.querySelector('math')?.namespaceURI, 'http://www.w3.org/1998/Math/MathML');
   assert.equal(element.querySelector('mfrac')?.textContent, 'x2');
+  assert.equal(element.querySelectorAll('a')[1]?.getAttribute('href'), 'https://example.org/guide#section');
   assert.equal(element.querySelectorAll('script,annotation-xml,[onclick]').length, 0);
   assert.equal(sanitizeArticle(clean, 'https://example.com/story'), clean);
 });

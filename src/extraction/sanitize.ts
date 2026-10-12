@@ -145,7 +145,7 @@ export function sanitizeArticle(html: unknown, baseUrl: string) {
         else if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) {
           const sensitive = /^(?:access_token|token|auth|authorization|email|session|sessionid|session_id|user_id|password|key|api_key)$/i;
           if (![...url.searchParams.keys()].some(key => sensitive.test(key))) {
-            clean.setAttribute('href', normalizeUrl(url.href));
+            clean.setAttribute('href', normalizeUrl(url.href) + url.hash);
           }
         }
       } catch { /* Invalid links remain readable text. */ }
