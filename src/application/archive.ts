@@ -63,6 +63,46 @@ interface ArchiveOptions {
   inspect(this: void, article: Article): Promise<Inspection> | Inspection;
 }
 
+/** Allocate downloads fairly; claimed content hashes are not verified identities yet. */
+function discoveryCandidates(listings: Listing[]) {
+  type Claim = { listings: Listing[]; listedAt: number };
+  const claims = new Map<string, Claim>();
+  const urls = new Map<string, { claims: Claim[]; next: number }>();
+  for (const listing of listings) {
+    const binding = JSON.stringify([listing.blobHash, listing.size, listing.urlHash,
+      listing.contentHash, listing.url, listing.title, listing.byline, listing.capturedAt]);
+    const existing = claims.get(binding);
+    if (existing) {
+      existing.listings.push(listing);
+      existing.listedAt = Math.min(existing.listedAt, listing.createdAt);
+      continue;
+    }
+    const claim = {listings:[listing], listedAt:listing.createdAt};
+    claims.set(binding, claim);
+    const url = urls.get(listing.urlHash) || {claims:[], next:0};
+    url.claims.push(claim);
+    urls.set(listing.urlHash, url);
+  }
+  const publishers = new Map<string, number>();
+  const selected: (Listing & {listedAt:number})[] = [];
+  // Two rounds give other URLs a turn before spending a second attempt on one URL.
+  for (let round=0; round<2; round++) {
+    for (const url of urls.values()) {
+      while (url.next < url.claims.length) {
+        const claim = url.claims[url.next++];
+        if (!claim) break;
+        const listing = claim.listings.find(entry => (publishers.get(entry.pubkey) || 0) < 4);
+        if (!listing) continue;
+        publishers.set(listing.pubkey, (publishers.get(listing.pubkey) || 0) + 1);
+        selected.push({...listing, listedAt:claim.listedAt});
+        if (selected.length === 20) return selected;
+        break;
+      }
+    }
+  }
+  return selected;
+}
+
 /** Owns explicit share workflows and the distinction between private and public copies. */
 export class ArticleArchive {
   readonly #network: ArchiveOptions["network"];
@@ -241,20 +281,9 @@ export class ArticleArchive {
     const fresh = yield* this.#network.queryListingsEffect();
     yield* io(() => this.#catalog.ingest(fresh));
     const listings = yield* io(() => this.#catalog.list());
-    const snapshots = new Map<string, Listing & { listedAt: number }>();
-    for (const listing of listings) {
-      const previous = snapshots.get(listing.contentHash);
-      if (previous)
-        previous.listedAt = Math.min(previous.listedAt, listing.createdAt);
-      else
-        snapshots.set(listing.contentHash, {
-          ...listing,
-          listedAt: listing.createdAt,
-        });
-    }
     const budget = { remainingBytes: 16 * 1024 * 1024 };
-    const accepted = (yield* Effect.forEach(
-      [...snapshots.values()].slice(0, 20),
+    const inspected = (yield* Effect.forEach(
+      discoveryCandidates(listings),
       (listing) =>
         Effect.gen({ self: this }, function* () {
           const copy = {
@@ -263,11 +292,20 @@ export class ArticleArchive {
           };
           const [eligible] = yield* this.#eligible([copy]);
           if (!eligible) return null;
-          yield* io(() => this.#reader.saveRecord(copy, { shared: true }));
           return eligible;
         }).pipe(Effect.catch(() => Effect.succeed(null))),
       { concurrency: 2 },
     )).filter((copy): copy is EligibleCopy => copy !== null);
+    const snapshots = new Map<string, EligibleCopy>();
+    for (const copy of inspected) {
+      const previous = snapshots.get(copy.contentHash);
+      if (previous) previous.listedAt = Math.min(previous.listedAt, copy.listedAt);
+      else snapshots.set(copy.contentHash, copy);
+    }
+    const accepted = (yield* Effect.forEach([...snapshots.values()],
+      copy => io(() => this.#reader.saveRecord(copy, {shared:true})).pipe(
+        Effect.as(copy), Effect.catch(() => Effect.succeed(null))),
+      {concurrency:2})).filter((copy): copy is EligibleCopy => copy !== null);
     let warning = "";
     if (accepted.length) {
       warning = yield* Effect.gen({ self: this }, function* () {

@@ -59,7 +59,8 @@ function fixture(
     files: new Map<string, ArticleCopy>(),
     failListing: false,
     failCatalog: false,
-    failVotes: false
+    failVotes: false,
+    reads: [] as Listing[]
   };
   const network: ArticleNetwork = {
     uploadEffect:
@@ -93,9 +94,12 @@ function fixture(
     readArticleEffect: (listing, { budget } = {}) =>
       Effect.gen(function* () {
         calls.push(`read:${listing.contentHash}`);
-        const copy = controls.files.get(listing.contentHash);
+        controls.reads.push(listing);
+        const copy = controls.files.get(listing.blobHash) ?? controls.files.get(listing.contentHash);
         if (!copy)
           return yield* Effect.fail(BoundaryError.from(new Error('Missing')));
+        if (copy.blobHash !== listing.blobHash || copy.article.title !== listing.title)
+          return yield* BoundaryError.from(new Error('Listing does not match file'));
         if (budget) budget.remainingBytes -= copy.size;
         return copy;
       }),
@@ -405,3 +409,80 @@ await test('concurrent browsing shares one discovery and permits a later explici
       assert.equal(calls.filter((call) => call === 'query').length, 2);
     })
   ));
+
+await test('unverified snapshot claims and mislabeled blobs cannot suppress valid alternatives', () =>
+  Effect.runPromise(Effect.gen(function* () {
+    for (const field of ['blobHash', 'title'] as const) {
+      const {archive, controls} = fixture();
+      const copy = yield* encode(article('legitimate'));
+      const valid = listingFor(copy);
+      const poison = {...valid, id:'a'.repeat(64), pubkey:'3'.repeat(64), createdAt:valid.createdAt+1000,
+        [field]:field === 'blobHash' ? '0'.repeat(64) : 'Forged title'};
+      controls.listings = [poison, valid];
+      controls.files.set(copy.contentHash, copy);
+      const result = yield* archive.browseEffect();
+      assert.deepEqual(result.entries.map(entry=>entry.title), ['legitimate']);
+      assert.equal(controls.reads.length, 2);
+    }
+  })));
+
+await test('discovery spreads its bounded attempts across URLs and limits each signing key', () =>
+  Effect.runPromise(Effect.gen(function* () {
+    const {archive, controls} = fixture();
+    for (let index=0; index<40; index++) {
+      const copy = yield* encode({...article(`candidate-${index}`),
+        url:index<10 ? 'https://example.org/flooded' : `https://example.org/candidate-${index}`});
+      controls.files.set(copy.contentHash, copy);
+      controls.listings.push({...listingFor(copy), pubkey:index<20 ? '2'.repeat(64) : index.toString(16).padStart(64,'0')});
+    }
+    yield* archive.browseEffect();
+    assert.equal(controls.reads.length, 20);
+    assert.ok(controls.reads.filter(entry=>entry.url==='https://example.org/flooded').length <= 2);
+    assert.ok(controls.reads.filter(entry=>entry.pubkey==='2'.repeat(64)).length <= 4);
+    assert.ok(controls.reads.some(entry=>entry.pubkey!=='2'.repeat(64)));
+  })));
+
+await test('identical file claims share one download and retain earliest listing age', () =>
+  Effect.runPromise(Effect.gen(function* () {
+    const {archive, controls} = fixture();
+    const copy = yield* encode(article('same-snapshot'));
+    const valid = listingFor(copy);
+    controls.listings = [valid, {...valid,id:'b'.repeat(64),pubkey:'3'.repeat(64),createdAt:valid.createdAt-1000}];
+    controls.files.set(copy.contentHash, copy);
+    const result = yield* archive.browseEffect();
+    assert.equal(result.entries.length,1);
+    assert.equal(controls.reads.length,1,'Identical file/metadata bindings need one download');
+    assert.equal(result.entries[0]?.listedAt, valid.createdAt-1000);
+  })));
+
+await test('different verified files with one snapshot merge without boosting reputation', () =>
+  Effect.runPromise(Effect.gen(function* () {
+    const {archive, controls, reader} = fixture();
+    const newer = yield* encode(article('snapshot'));
+    const older = yield* encode({...newer.article, capturedAt:newer.article.capturedAt-1000});
+    const recent = listingFor(newer);
+    const earlier = {...listingFor(older),pubkey:'3'.repeat(64),createdAt:recent.createdAt-1000};
+    controls.listings = [recent,earlier];
+    controls.files.set(newer.blobHash,newer);
+    controls.files.set(older.blobHash,older);
+    const result = yield* archive.browseEffect();
+    assert.equal(controls.reads.length,2);
+    assert.equal(result.entries.length,1);
+    assert.equal(result.entries[0]?.listedAt,earlier.createdAt);
+    assert.equal((yield* Effect.promise(()=>reader.listRecords())).length,1);
+  })));
+
+await test("reposting someone else's exact file claims cannot spend their publisher allowance", () =>
+  Effect.runPromise(Effect.gen(function* () {
+    const {archive, controls} = fixture();
+    for(let index=0;index<8;index++) {
+      const copy = yield* encode(article(`reposted-${index}`));
+      const original = {...listingFor(copy),pubkey:(index+10).toString(16).padStart(64,'0')};
+      controls.files.set(copy.blobHash,copy);
+      controls.listings.push({...original,id:(index+20).toString(16).padStart(64,'0'),pubkey:'2'.repeat(64),createdAt:original.createdAt+1000},original);
+    }
+    const result = yield* archive.browseEffect();
+    assert.equal(result.entries.length,8);
+    assert.equal(controls.reads.length,8);
+    assert.equal(controls.reads.filter(entry=>entry.pubkey==='2'.repeat(64)).length,4);
+  })));
