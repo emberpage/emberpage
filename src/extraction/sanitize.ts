@@ -90,10 +90,10 @@ export function sanitizeArticle(html: unknown, baseUrl: string) {
 
     if (tag === 'img') {
       const src = element.getAttribute('src') || '', dimensions = inspectWebP(src);
-      const alt = (element.getAttribute('alt') || 'Image unavailable').slice(0, 500);
+      const alt = (element.getAttribute('alt') || '').slice(0, 500);
       if (!dimensions || images >= MAX_IMAGES || imageUriLength + src.length > MAX_TOTAL_IMAGE_URI_LENGTH || imagePixels + dimensions.width * dimensions.height > MAX_TOTAL_IMAGE_PIXELS) {
         const placeholder = document.createElement('span');
-        placeholder.textContent = `[Image: ${alt}]`;
+        placeholder.textContent = `[Image: ${alt || 'Image unavailable'}]`;
         parent.appendChild(placeholder);
         return;
       }

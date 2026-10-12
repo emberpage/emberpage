@@ -374,7 +374,7 @@ async function embedLoadedImages(html: string, sourceDocument: Document, baseUrl
   const sourceImages = [...template.content.querySelectorAll('img')];
   budget.limitExceeded = sourceImages.length > MAX_IMAGES;
   for (const image of sourceImages) {
-    const alt = (image.getAttribute('alt') || 'Image unavailable').slice(
+    const alt = (image.getAttribute('alt') || '').slice(
       0,
       500
     );
@@ -472,7 +472,7 @@ async function embedLoadedImages(html: string, sourceDocument: Document, baseUrl
       total += encoded.length;
     } else {
       const placeholder = sourceDocument.createElement('span');
-      placeholder.textContent = `[Image: ${alt}]`;
+      placeholder.textContent = `[Image: ${alt || 'Image unavailable'}]`;
       image.replaceWith(placeholder);
     }
   }

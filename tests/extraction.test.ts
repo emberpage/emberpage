@@ -100,7 +100,7 @@ void test('sanitizer rejects forged, oversized, and excessive inline images', ()
 
 void test('capture draws the original loaded image, downsizes it, and uses safe placeholders on canvas failure', async () => {
   const paragraphs = Array.from({ length: 5 }, () => '<p>This coastal article contains meaningful observations about seasons, birds, and ocean tides. Researchers preserve detailed field notes so readers can study the patterns.</p>').join('');
-  const doc = fixture(`<html><head><title>A field notebook</title></head><body><article><h1>A field notebook</h1>${paragraphs}<img src="/chart.webp" alt="Tide chart"><img src="/blocked.webp" alt="Protected chart"></article></body></html>`);
+  const doc = fixture(`<html><head><title>A field notebook</title></head><body><article><h1>A field notebook</h1>${paragraphs}<img src="/chart.webp"><img src="/blocked.webp" alt="Protected chart"></article></body></html>`);
   const originals = [...doc.querySelectorAll('img')];
   for (const image of originals) Object.defineProperties(image, { complete: { value: true }, naturalWidth: { value: 1600 }, naturalHeight: { value: 800 } });
   const create = doc.createElement.bind(doc);
@@ -125,6 +125,7 @@ void test('capture draws the original loaded image, downsizes it, and uses safe 
   const output = create('div'); output.innerHTML = result.article.content;
   assert.equal(output.querySelectorAll('img').length, 1);
   assert.equal(output.querySelector('img')?.src, WEBP);
+  assert.equal(output.querySelector('img')?.getAttribute('alt'), '', 'A successfully copied image without a description must not announce a capture failure.');
   assert.match(output.textContent, /Image: Protected chart/);
   assert.equal(doc.documentElement.outerHTML, before);
 });
