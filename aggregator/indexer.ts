@@ -63,6 +63,14 @@ export function rankedArticles<T extends RankedListing>(
     )
       latest.set(key, vote);
   }
+  const totals = new Map<string, { upvotes: number; downvotes: number }>();
+  for (const vote of latest.values()) {
+    const key = `${vote.urlHash}:${vote.contentHash}`;
+    const count = totals.get(key) || { upvotes: 0, downvotes: 0 };
+    if (vote.value === 1) count.upvotes = Math.min(50, count.upvotes + 1);
+    if (vote.value === -1) count.downvotes = Math.min(50, count.downvotes + 1);
+    totals.set(key, count);
+  }
   const copies = new Map<string, T & { listedAt: number }>();
   for (const listing of listings) {
     if (listing.createdAt < now - DISCOVERY_WINDOW_MS) continue;
@@ -81,19 +89,8 @@ export function rankedArticles<T extends RankedListing>(
   }
   return [...copies.values()]
     .map((entry) => {
-      const selected = [...latest.values()].filter(
-        (vote) =>
-          vote.urlHash === entry.urlHash &&
-          vote.contentHash === entry.contentHash,
-      );
-      const upvotes = Math.min(
-          50,
-          selected.filter((vote) => vote.value === 1).length,
-        ),
-        downvotes = Math.min(
-          50,
-          selected.filter((vote) => vote.value === -1).length,
-        );
+      const { upvotes, downvotes } = totals.get(`${entry.urlHash}:${entry.contentHash}`)
+        || { upvotes: 0, downvotes: 0 };
       const ageHours = Math.max(0, now - entry.listedAt) / 3_600_000;
       return {
         ...entry,

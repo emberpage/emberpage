@@ -250,5 +250,5 @@ $('#refresh').addEventListener('click', () => void load(true));
 void load();
 
 
-setInterval(() => { if (document.visibilityState === 'visible') void load(false, true); }, 5000);
+setInterval(() => { if (document.visibilityState === 'visible') void load(false, true); }, 60_000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void load(false, true); });
