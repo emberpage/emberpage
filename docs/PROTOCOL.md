@@ -82,7 +82,7 @@ Query at most 5000 metadata events within 30 days for at most 100 requested `(ur
 
 ## Reader eligibility and ranking
 
-An explicit discovery pass checks at most 100 recent listings, deduplicates content, and downloads at most 20 unique files. Download concurrency is two and the combined streaming budget is 16 MiB. Only complete files that pass all checks appear in Popular; the batch is not a global catalog.
+An explicit discovery pass queries at most 100 recent listings and considers the bounded local metadata ledger. Identical file/metadata claims share an attempt. It allocates at most 20 downloads in rounds across URLs, with at most two claims per URL and four attempts per signing key. A claimed content hash cannot discard a competing file or conflicting metadata before verification. Only verified survivors merge by content hash. These concentration limits are not Sybil resistance; fresh keys and a flooded query window can still distort discovery. Download concurrency is two and the combined streaming budget is 16 MiB. Only complete files that pass all checks appear in Popular; the batch is not a global catalog.
 
 After file and metadata verification, inspect and sanitize the HTML locally. Require at least 1,000 visible characters, one content block, at most 10 images, and text density between 0.1 and 1, excluding embedded image data. Bound inspection to 50,000 DOM nodes and 100 nesting levels. These are readability heuristics, not truth checks.
 
