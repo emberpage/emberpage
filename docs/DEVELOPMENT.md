@@ -25,4 +25,4 @@ Keep state and ordering rules inside the module that owns them. Callers use its 
 
 Import rules enforce the table, reject cycles and Node imports in browser code, and keep the aggregator away from article transports and body decoding. Tests deliberately cross these seams to verify the gates. JavaScript source and diagnostic suppressions are rejected.
 
-CI also runs `pnpm smoke`, `pnpm smoke:images`, `pnpm smoke:aggregator` and `pnpm test:drive`. These use disposable local fixtures. Read `AGENTS.md` before changing Effect code; [PROTOCOL.md](PROTOCOL.md) defines the unchanged public format and limits.
+CI also runs `pnpm smoke`, `pnpm smoke:images`, `pnpm smoke:aggregator` and `pnpm test:drive`. These use disposable local fixtures; generated logs and screenshots stay in `artifacts/`. Read `AGENTS.md` before changing Effect code; [PROTOCOL.md](PROTOCOL.md) defines the public format and limits.

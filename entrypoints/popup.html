@@ -15,11 +15,16 @@
         <div class="options-panel">
           <button id="previewMenu" class="text-button" disabled>Preview before saving</button>
           <button id="browse" class="text-button">Refresh community archive</button>
-          <p class="quiet">Community archives are checked for readability. Their facts are not verified.</p>
-          <p class="quiet">Sharing makes your copy, title, and link public. Network providers can see your IP address.</p>
-          <p class="quiet">When storage fills up, copies you haven’t read recently are removed.</p>
           <button id="manage" class="text-button" hidden>Manage saved articles</button>
           <button id="clear" class="text-button danger" hidden>Remove all saved copies</button>
+          <details class="archive-about">
+            <summary>About this archive</summary>
+            <div>
+              <p class="quiet">Community archives are checked for readability. Their facts are not verified.</p>
+              <p class="quiet">Sharing makes your copy, title, and link public. Network providers can see your IP address.</p>
+              <p class="quiet">When storage fills up, copies you haven’t read recently are removed.</p>
+            </div>
+          </details>
         </div>
       </details>
     </header>
@@ -33,18 +38,18 @@
           </div>
           <button id="capture" class="primary full" disabled>Save article</button>
         </section>
-      <p id="status" class="status" role="status" aria-live="polite"></p>
         <nav class="tabs" aria-label="Articles">
           <button data-view="library" aria-current="page">Archive</button>
           <button data-view="read">Community</button>
         </nav>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
         <section id="library-view">
           <div class="section-title"><h2>My archive</h2><span id="saved-count"></span><button id="done" class="text-button" hidden>Done</button></div>
           <div id="library-list" class="item-list"></div>
         </section>
         <section id="read-view" hidden>
           <h2>Community archive</h2>
-          <div id="catalog-list" class="item-list"></div>
+          <div id="catalog-list" class="item-list" aria-live="polite"></div>
         </section>
       </section>
     </main>

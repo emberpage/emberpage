@@ -66,11 +66,11 @@ function empty(container: HTMLElement, text: string) {
   paragraph.textContent = text;
   container.append(paragraph);
 }
-function renderCatalog(entries: PopularEntry[]) {
+function renderCatalog(entries: PopularEntry[], emptyMessage = 'No shared articles yet. Your saved articles are in Archive.') {
   const container = $('#catalog-list');
   container.replaceChildren();
   if (!entries.length)
-    empty(container, 'No community archives found yet.');
+    empty(container, emptyMessage);
   for (const entry of entries) {
     const helpful = entry.rating?.upvotes || 0;
     container.append(
@@ -86,14 +86,14 @@ function renderCatalog(entries: PopularEntry[]) {
   }
 }
 async function browse(button: HTMLButtonElement) {
-  let entries: PopularEntry[] | undefined;
   await busy(button, async () => {
+    if (!$('#catalog-list').querySelector('.item')) $('#catalog-list').replaceChildren();
     status('Finding articles…');
     const result = await send('CATALOG');
-    entries = result.entries;
-    status(result.warning || (entries.length ? '' : 'No readable archives found right now. Try again later.'));
+    const entries = result.entries;
+    renderCatalog(entries, result.warning || undefined);
+    status(entries.length ? result.warning : '');
   });
-  if (entries) renderCatalog(entries);
 }
 buttonAt('#browse').addEventListener('click', () => {
   selectView('read');

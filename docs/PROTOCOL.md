@@ -32,7 +32,7 @@ The qualified read path is constructed from the verified hash:
 https://media.primal.net/uploads2/<hash[0]>/<hash[1:3]>/<hash[3:5]>/<fullHash>.json
 ```
 
-That precise Primal CDN layout was observed in the live provider spike and appears in current provider source. GET it with omitted credentials and `redirect:error`, rather than following opaque browser redirects or fetching arbitrary URLs from a listing. If the provider changes this layout, fail clearly; do not guess another path. The extension must allow only the configured provider and this CDN in its network policy. [Spike evidence](research/blossom-spike-results.json), [Primal source](https://github.com/PrimalHQ/primal-blossom-server/blob/main/src/lib.rs)
+GET this path with omitted credentials and `redirect:error`. Do not follow redirects or fetch arbitrary listing URLs. If the provider changes this layout, fail clearly. Allow only the configured provider and CDN in the network policy. [Primal source](https://github.com/PrimalHQ/primal-blossom-server/blob/main/src/lib.rs)
 
 Enforce file size during streaming, before parsing. A caller may share `{remainingBytes}` across its bounded reader workers; each consumed chunk decrements that budget. Verify blobHash before parsing, recompute contentHash/urlHash, and match size, URL, title, byline and capture time against the listing. No network operation itself certifies content eligibility. Sanitization, actual visible text/DOM metrics and decoded-image bounds remain required before a reader card appears.
 
