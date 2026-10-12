@@ -16,14 +16,12 @@ Ember Page is not in the Chrome Web Store yet.
 ## Build your reading archive
 
 - **Save:** open an article and click **Save article** in Ember Page. A private copy opens, ready to read.
-- **Read:** your **Archive** opens first. Choose **Community** to browse popular archived articles. Each is checked for readability; its facts are not verified.
-- **More:** **Options** lets you preview before saving or manage saved copies. In a preview, **More options** offers **Share publicly**, **Text only**, and discard. Public sharing is optional and only for articles you have permission to redistribute. The reader’s **Article options** includes the original link and ratings.
-
-Nothing is saved or shared until you choose an action. Ratings are sent only when you press a rating button.
+- **Read:** open a saved article from **Archive**, or choose **Community** to browse articles shared by others.
+- **Options:** preview before saving, manage saved articles, or save a text-only copy. The preview also lets you share publicly; the reader offers the original link and ratings.
 
 ## Privacy and storage
 
-Saving is private by default. **Share publicly** publishes the article snapshot, title, and original link for anyone to read. Check for personal information before making an archive public.
+Saving is private by default. **Share publicly** publishes your copy, title, and original link. Share only what you have permission to distribute, and check for personal information first. Community articles are checked for readability, not factual accuracy.
 
 Sharing is not anonymous: service providers can see your IP address, and public activity from this installation can be linked. Removing a saved copy does not remove public copies.
 
@@ -38,7 +36,7 @@ pnpm install
 pnpm dev
 ```
 
-All code is TypeScript. Effect handles workflows and validation. `pnpm check` enforces typed linting, unused-code and architecture rules, then runs tests and the WXT build. `pnpm smoke` tests the extension in Chrome. `pnpm zip` creates a release ZIP.
+Run `pnpm check` for TypeScript, linting, Effect diagnostics, architecture checks, tests and the WXT build. `pnpm smoke` tests the extension in Chrome; `pnpm zip` packages it.
 
 `pnpm aggregator` starts a separate [local dashboard](http://127.0.0.1:4318). It tracks community archive listings and ratings without downloading articles. The extension works without it.
 

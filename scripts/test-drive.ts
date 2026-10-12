@@ -34,7 +34,7 @@ const recheck = (process.env.TEST_DRIVE_RECHECK || '')
   .filter(Boolean)
   .map(Number);
 const runStamp = new Date().toISOString().replace(/[:.]/g, '-');
-const priorLog = await readFile('docs/TEST-DRIVE.md', 'utf8').catch(() => '');
+const priorLog = await readFile('artifacts/TEST-DRIVE.md', 'utf8').catch(() => '');
 let buildHash = '';
 let context: BrowserContext | undefined;
 function browser(): BrowserContext { assert.ok(context, 'The test browser is not initialized.'); return context; }
@@ -733,7 +733,7 @@ async function logResults() {
       `## ${result.number}. ${result.name}\n\n- Timestamp: ${result.startedAt}\n- Duration: ${result.durationMs}ms\n- Result: **${result.passed ? 'PASS' : 'FAIL'}**${result.error ? '\n- Failure: ' + result.error : ''}\n- Actions: ${result.actions.join('; ') || 'None (initial state)'}\n- Assertions: ${result.assertions.join('; ') || 'Stopped at the recorded failure'}\n- Evidence: ${result.evidence ? '`' + result.evidence + '` (local generated artifact)' : 'No screenshot available'}\n`
   );
   await writeFile(
-    'docs/TEST-DRIVE.md',
+    'artifacts/TEST-DRIVE.md',
     priorLog +
       (priorLog ? '\n---\n\n' : '') +
       (recheck.length
