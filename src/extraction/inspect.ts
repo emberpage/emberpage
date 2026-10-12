@@ -1,5 +1,5 @@
 import { Schema } from 'effect';
-import type { Article } from './types.ts';
+import type { Article } from '../domain/types.ts';
 import { sanitizeArticle, inspectWebP, MAX_IMAGES, MAX_TOTAL_IMAGE_URI_LENGTH, MAX_TOTAL_IMAGE_PIXELS } from './sanitize.ts';
 
 /** Inspect inert sanitized HTML; derived text can differ across renderer versions. */

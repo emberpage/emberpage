@@ -1,8 +1,8 @@
 import { Predicate } from 'effect';
-type Listing = import('../types.ts').Listing;
-import { hashUrl, MAX_ARTICLE_BYTES } from './article.ts';
-import { normalizeUrl } from './url.ts';
-import { IndexedRecords, recordBytes } from './storage.ts';
+type Listing = import('../domain/types.ts').Listing;
+import { hashUrl, MAX_ARTICLE_BYTES } from '../domain/article.ts';
+import { normalizeUrl } from '../domain/url.ts';
+import { IndexedRecords, recordBytes } from './indexeddb.ts';
 export const LISTING_WINDOW_MS: number = 30 * 24 * 60 * 60 * 1000;
 const HASH: RegExp = /^[a-f0-9]{64}$/;
 export async function validateCatalogEntry(

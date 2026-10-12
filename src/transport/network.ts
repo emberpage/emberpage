@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect";
-import { finalizeEvent, generateSecretKey } from "nostr-tools/pure";
-import { decodeArticle, MAX_ARTICLE_BYTES } from "./core/article.ts";
+import { finalizeEvent } from "nostr-tools/pure";
+import { decodeArticle, MAX_ARTICLE_BYTES } from "../domain/article.ts";
 import {
   NostrDirectory,
   PROVIDER,
@@ -10,16 +10,16 @@ import {
   RATING_TAG,
   validateListingEvent,
   validateVoteEvent,
-} from "./network/nostr.ts";
+} from "../directory/nostr.ts";
 import type {
   ArticleCopy,
   Listing,
   RatingTarget,
   UploadReceipt,
   Vote,
-} from "./types.ts";
+} from "../domain/types.ts";
 export { PROVIDER };
-import type { NostrSocketConstructor } from "./network/nostr.ts";
+import type { NostrSocketConstructor } from "../directory/nostr.ts";
 
 export class NetworkError extends Schema.TaggedError<NetworkError>()(
   "NetworkError",
@@ -43,29 +43,6 @@ const receiptSchema = Schema.Struct({
   type: Schema.String,
   url: Schema.String,
 });
-let identityPromise: Promise<Uint8Array> | null = null;
-async function installationIdentity(): Promise<Uint8Array> {
-  return (identityPromise ??= (async () => {
-    const key = "emberpageSigningKey";
-    const stored: unknown = (await chrome.storage.local.get(key))[key];
-    if (stored !== undefined) {
-      if (typeof stored !== "string" || !HASH.test(stored))
-        throw new Error("This installation’s sharing identity is damaged. You can still read saved copies.");
-      return Uint8Array.from({length:32}, (_,index) => parseInt(stored.slice(index*2,index*2+2),16));
-    }
-    const secret = generateSecretKey();
-    await chrome.storage.local.set({
-      [key]: [...secret]
-        .map((byte) => byte.toString(16).padStart(2, "0"))
-        .join(""),
-    });
-    return secret;
-  })().catch((error) => {
-    identityPromise = null;
-    throw error;
-  }));
-}
-
 /** Primal expects padded standard Base64 rather than current BUD-11 encoding. */
 export function createBlossomAuthorization(
   secretKey: Uint8Array,
@@ -123,7 +100,9 @@ const responseBytes = Effect.fn("EmberNetwork.responseBytes")(function* (
         total += value.length;
         if (budget) {
           if (value.length > budget.remainingBytes)
-            return yield* reject("The article search reached its download limit.");
+            return yield* reject(
+              "The article search reached its download limit.",
+            );
           budget.remainingBytes -= value.length;
         }
         if (total > maximum)
@@ -144,25 +123,25 @@ const responseBytes = Effect.fn("EmberNetwork.responseBytes")(function* (
 interface NetworkOptions {
   fetch?: typeof globalThis.fetch;
   WebSocket?: NostrSocketConstructor;
-  identity?: () => Promise<Uint8Array>;
+  identity: () => Promise<Uint8Array>;
   now?: () => number;
   timeoutMs?: number;
 }
 
 /** One explicit provider and directory; acquisition scopes own cancellation. */
 export class EmberNetwork {
-  readonly fetch: typeof globalThis.fetch;
-  readonly identity: () => Promise<Uint8Array>;
-  readonly now: () => number;
-  readonly timeoutMs: number;
-  readonly directory: NostrDirectory;
+  private readonly fetch: typeof globalThis.fetch;
+  private readonly identity: () => Promise<Uint8Array>;
+  private readonly now: () => number;
+  private readonly timeoutMs: number;
+  private readonly directory: NostrDirectory;
   constructor({
     fetch = globalThis.fetch.bind(globalThis),
     WebSocket = globalThis.WebSocket,
-    identity = installationIdentity,
+    identity,
     now = () => Date.now(),
     timeoutMs = 20_000,
-  }: NetworkOptions = {}) {
+  }: NetworkOptions) {
     this.fetch = fetch;
     this.identity = identity;
     this.now = now;
@@ -328,13 +307,6 @@ export class EmberNetwork {
     yield* io((signal) => this.directory.publish(event, signal));
     return listing;
   });
-  publishArticleEffect = Effect.fn("EmberNetwork.publishArticle")(function* (
-    this: EmberNetwork,
-    copy: ArticleCopy,
-  ) {
-    const receipt = yield* this.uploadEffect(copy);
-    return yield* this.publishListingEffect(copy, receipt);
-  });
   readArticleEffect = Effect.fn("EmberNetwork.readArticle")(function* (
     this: EmberNetwork,
     listing: Listing,
@@ -429,31 +401,4 @@ export class EmberNetwork {
     yield* io((signal) => this.directory.publish(event, signal));
     return vote;
   });
-
-  upload(copy: ArticleCopy, options?: { signal?: AbortSignal }) {
-    return Effect.runPromise(this.uploadEffect(copy), options);
-  }
-  publishListing(copy: ArticleCopy, receipt: UploadReceipt) {
-    return Effect.runPromise(this.publishListingEffect(copy, receipt));
-  }
-  publishArticle(copy: ArticleCopy) {
-    return Effect.runPromise(this.publishArticleEffect(copy));
-  }
-  readArticle(
-    listing: Listing,
-    options: { budget?: { remainingBytes: number }; signal?: AbortSignal } = {},
-  ) {
-    return Effect.runPromise(this.readArticleEffect(listing, options), {
-      signal: options.signal,
-    });
-  }
-  queryListings() {
-    return Effect.runPromise(this.queryListingsEffect());
-  }
-  queryVotes(targets: RatingTarget[]) {
-    return Effect.runPromise(this.queryVotesEffect(targets));
-  }
-  publishVote(value: RatingTarget & { value: number }) {
-    return Effect.runPromise(this.publishVoteEffect(value));
-  }
 }

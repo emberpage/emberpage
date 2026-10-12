@@ -1,9 +1,9 @@
 import { Effect, Schema } from 'effect';
-import type { Listing, Vote, RatingTarget } from '../types.ts';
+import type { Listing, Vote, RatingTarget } from '../domain/types.ts';
 import type { Event } from 'nostr-tools';
 import { verifyEvent } from 'nostr-tools/pure';
-import { normalizeUrl } from '../core/url.ts';
-import { hashUrl, MAX_ARTICLE_BYTES } from '../core/article.ts';
+import { normalizeUrl } from '../domain/url.ts';
+import { hashUrl, MAX_ARTICLE_BYTES } from '../domain/article.ts';
 
 const RELAY = 'wss://relay.primal.net';
 export const PROVIDER = 'https://blossom.primal.net';

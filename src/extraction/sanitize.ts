@@ -1,5 +1,5 @@
 import { Schema } from 'effect';
-import { normalizeUrl } from './core/url.ts';
+import { normalizeUrl } from '../domain/url.ts';
 
 export const MAX_IMAGES = 10;
 export const MAX_TOTAL_IMAGE_URI_LENGTH = 1024 * 1024;

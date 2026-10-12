@@ -1,10 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
-    "src/popup.ts",
-    "src/review.ts",
-    "src/reader.ts",
-    "src/offscreen.ts",
+    "src/pages/popup.ts",
+    "src/pages/review.ts",
+    "src/pages/reader.ts",
+    "src/platform/offscreen.ts",
     "aggregator/public/dashboard.ts",
     "tests/*.test.ts",
     "scripts/smoke*.ts"

@@ -1,8 +1,9 @@
+import { BoundaryError } from '../src/domain/errors.ts';
 import { Effect, Schema } from 'effect';
 import type { BrowserContext, Page } from 'playwright';
 import type { Server } from 'node:http';
-import type { Article } from '../src/types.ts';
-import type { Replies } from '../src/ui.ts';
+import type { Article } from '../src/domain/types.ts';
+import type { Replies } from '../src/pages/ui.ts';
 // RUN_TEST_DRIVES=1 pnpm exec tsx scripts/test-drive.ts. Without the flag, print the prepared scenario inventory.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
@@ -13,7 +14,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { createAggregatorServer } from '../aggregator/server.ts';
 import { AggregatorStore } from '../aggregator/store.ts';
-import { hashUrl } from '../src/core/article.ts';
+import { hashUrl } from '../src/domain/article.ts';
 
 const prose =
   'This original synthetic field notebook explains observations, methods, and conclusions in enough detail for an independent reader. ';
@@ -842,7 +843,7 @@ if (process.env.RUN_TEST_DRIVES !== '1') {
       };
       try {
         if (scenario.reset !== false) await reset();
-        result.assertions = await Effect.runPromise(Effect.tryPromise({try: () => scenario.run(), catch: (error) => error instanceof Error ? error : new Error('The browser scenario failed.')}));
+        result.assertions = await Effect.runPromise(Effect.tryPromise({try: () => scenario.run(), catch: (error) => BoundaryError.from(error, error instanceof Error ? error.message : 'The browser scenario failed.')}));
         result.passed = true;
       } catch (error) {
         result.error = error instanceof Error ? error.message : 'The browser scenario failed.';

@@ -1,5 +1,6 @@
+import { BoundaryError } from '../domain/errors.ts';
 import { Effect } from 'effect';
-type ArticleCopy = import('../types.ts').ArticleCopy;
+type ArticleCopy = import('../domain/types.ts').ArticleCopy;
 type StoredArticle = Omit<ArticleCopy, 'article'> & {
   url: string;
   title: string;
@@ -10,8 +11,8 @@ type StoredArticle = Omit<ArticleCopy, 'article'> & {
   storedAt: number;
   lastAccessedAt: number;
 };
-type ShareReceipt = import('../types.ts').ShareReceipt;
-import { decodeArticle } from './article.ts';
+type ShareReceipt = import('../domain/types.ts').ShareReceipt;
+import { decodeArticle } from '../domain/article.ts';
 const MAX_RECORDS = 100,
   MAX_VAULT_BYTES: number = 16 * 1024 * 1024;
 const encoder: TextEncoder = new TextEncoder(),
@@ -74,7 +75,7 @@ export class IndexedRecords<T> {
             }
           ),
         catch: (cause) =>
-          cause instanceof Error ? cause : new Error('Local storage failed.')
+          BoundaryError.from(cause, cause instanceof Error ? cause.message : 'Local storage failed.')
       })
     ));
   }

@@ -1,5 +1,6 @@
+import { BoundaryError } from '../domain/errors.ts';
 import { Effect } from 'effect';
-import type { Article } from './types.ts';
+import type { Article } from '../domain/types.ts';
 import { Readability } from '@mozilla/readability';
 import {
   sanitizeArticle,
@@ -597,7 +598,7 @@ async function captureArticleSnapshot(
 }
 
 export const captureArticleEffect = Effect.fn('captureArticle')((sourceDocument:Document = document, options:{captureToken?:string} = {}) =>
-  Effect.tryPromise({try: () => captureArticleSnapshot(sourceDocument, options), catch: error => error instanceof Error ? error : new Error('This page could not be captured.')})
+  Effect.tryPromise({try: () => captureArticleSnapshot(sourceDocument, options), catch: error => BoundaryError.from(error, error instanceof Error ? error.message : 'This page could not be captured.')})
 );
 export function captureArticle(sourceDocument:Document = document, options:{captureToken?:string} = {}):Promise<CaptureResult> {
   return Effect.runPromise(captureArticleEffect(sourceDocument, options));

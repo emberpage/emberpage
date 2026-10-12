@@ -1,4 +1,4 @@
-import { DISCOVERY_WINDOW_MS } from "../src/network/nostr.ts";
+import { DISCOVERY_WINDOW_MS } from "../src/directory/nostr.ts";
 import { DateTime, Effect, Fiber, Predicate, Schema, Schedule } from "effect";
 import type { AggregatorStore } from "./store.ts";
 import {

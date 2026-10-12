@@ -1,3 +1,4 @@
+import { BoundaryError } from '../src/domain/errors.ts';
 import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -14,7 +15,7 @@ const Manifest = Schema.Struct({
   icons:Schema.Record(Schema.String,Schema.String),
 });
 const Package = Schema.Struct({version:Schema.String});
-const read = (path:string)=>Effect.tryPromise({try:()=>readFile(path,'utf8'),catch:cause=>new Error(`Cannot read ${path}`,{cause})});
+const read = (path:string)=>Effect.tryPromise({try:()=>readFile(path,'utf8'),catch:cause=>BoundaryError.from(cause, `Cannot read ${path}`)});
 await Effect.runPromise(Effect.gen(function* () {
   const output='.output/chrome-mv3';
   const pkg=yield* read('package.json').pipe(Effect.flatMap(Schema.decodeUnknownEffect(Schema.fromJsonString(Package))));
@@ -30,7 +31,7 @@ await Effect.runPromise(Effect.gen(function* () {
   assert(!/localhost|127\.0\.0\.1|unsafe-eval/.test(manifest.content_security_policy.extension_pages));
   assert(manifest.content_security_policy.extension_pages.includes("font-src 'self'"));
   for(const file of [manifest.background.service_worker,manifest.action.default_popup,'review.html','reader.html','offscreen.html','capture.js','typeset.css','theme.css','fonts/geist-sans.woff2','fonts/geist-mono.woff2',...Object.values(manifest.icons)])
-    yield* Effect.tryPromise({try:()=>access(join(output,file)),catch:cause=>new Error(`Missing release asset ${file}`,{cause})});
+    yield* Effect.tryPromise({try:()=>access(join(output,file)),catch:cause=>BoundaryError.from(cause, `Missing release asset ${file}`)});
   for(const page of ['reader.html','review.html']) assert((yield* read(join(output,page))).includes('typeset'));
   if(process.env.GITHUB_REF_TYPE==='tag') assert.equal(process.env.GITHUB_REF_NAME,`v${pkg.version}`,'Release tag must match package version');
   yield* Effect.sync(()=>console.log(`Verified release manifest, entrypoints, Typeset and local fonts for ${pkg.version}.`));

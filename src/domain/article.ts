@@ -1,5 +1,5 @@
 import { Schema } from 'effect';
-import type { Article } from '../types.ts';
+import type { Article } from './types.ts';
 import { normalizeUrl } from './url.ts';
 export const MAX_ARTICLE_BYTES: number = 2 * 1024 * 1024;
 const encoder: TextEncoder = new TextEncoder(),

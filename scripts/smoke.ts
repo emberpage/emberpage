@@ -1,4 +1,4 @@
-import type { Replies } from '../src/ui.ts';
+import type { Replies } from '../src/pages/ui.ts';
 import { Effect, Schema } from 'effect';
 import type { BrowserContext, Page } from 'playwright';
 import { chromium } from 'playwright';

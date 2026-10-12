@@ -18,6 +18,16 @@
       }
     },
     {
+      "name": "entrypoints-are-composition-only",
+      "severity": "error",
+      "from": {
+        "path": "^(src|aggregator)/"
+      },
+      "to": {
+        "path": "^entrypoints/"
+      }
+    },
+    {
       "name": "extension-independent-of-dashboard",
       "severity": "error",
       "from": {
@@ -34,17 +44,121 @@
         "path": "^aggregator/"
       },
       "to": {
-        "path": "^src/(?!core/|network/nostr\\.ts$|types\\.ts$)"
+        "path": "^src/(?!domain/(?:errors|types|url|article)\\.ts$|directory/)"
       }
     },
     {
-      "name": "core-independent-of-platform",
+      "name": "domain-independent",
       "severity": "error",
       "from": {
-        "path": "^src/core/"
+        "path": "^src/domain/"
       },
       "to": {
-        "path": "^(aggregator|entrypoints)/|^src/(?!core/|types\\.ts$)"
+        "path": "^src/(?!(?:domain)/)"
+      }
+    },
+    {
+      "name": "application-imports",
+      "severity": "error",
+      "from": {
+        "path": "^src/application/"
+      },
+      "to": {
+        "path": "^src/(?!(?:application|domain)/)"
+      }
+    },
+    {
+      "name": "storage-imports",
+      "severity": "error",
+      "from": {
+        "path": "^src/storage/"
+      },
+      "to": {
+        "path": "^src/(?!(?:storage|domain)/)"
+      }
+    },
+    {
+      "name": "directory-imports",
+      "severity": "error",
+      "from": {
+        "path": "^src/directory/"
+      },
+      "to": {
+        "path": "^src/(?!(?:directory|domain)/)"
+      }
+    },
+    {
+      "name": "transport-imports",
+      "severity": "error",
+      "from": {
+        "path": "^src/transport/"
+      },
+      "to": {
+        "path": "^src/(?!(?:transport|directory|domain)/)"
+      }
+    },
+    {
+      "name": "extraction-imports",
+      "severity": "error",
+      "from": {
+        "path": "^src/extraction/"
+      },
+      "to": {
+        "path": "^src/(?!(?:extraction|domain)/)"
+      }
+    },
+    {
+      "name": "pages-imports",
+      "severity": "error",
+      "from": {
+        "path": "^src/pages/"
+      },
+      "to": {
+        "path": "^src/(?!(?:pages|domain)/|extraction/sanitize\\.ts$)"
+      }
+    },
+    {
+      "name": "platform-imports",
+      "severity": "error",
+      "from": {
+        "path": "^src/platform/"
+      },
+      "to": {
+        "path": "^src/(?!(?:platform|domain|extraction)/)"
+      }
+    },
+    {
+      "name": "browser-no-node",
+      "severity": "error",
+      "from": {
+        "path": "^(src|entrypoints)/"
+      },
+      "to": {
+        "dependencyTypes": [
+          "core"
+        ]
+      }
+    },
+    {
+      "name": "readability-only-extraction",
+      "severity": "error",
+      "from": {
+        "path": "^(src|entrypoints|aggregator)/",
+        "pathNot": "^src/extraction/"
+      },
+      "to": {
+        "path": "(^|/)node_modules/.*@mozilla/readability"
+      }
+    },
+    {
+      "name": "websocket-node-adapter-only",
+      "severity": "error",
+      "from": {
+        "path": "^(src|entrypoints|aggregator)/",
+        "pathNot": "^aggregator/main\\.ts$"
+      },
+      "to": {
+        "path": "^node_modules/ws(?:/|$)"
       }
     },
     {

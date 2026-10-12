@@ -1,5 +1,6 @@
+import { BoundaryError, errorMessage } from '../domain/errors.ts';
 import { Effect, Schema } from 'effect';
-import type { Article, PopularEntry, Rating, ShareResult } from './types.ts';
+import type { Article, PopularEntry, Rating, ShareResult } from '../domain/types.ts';
 interface LibraryEntry {
   contentHash: string;
   url: string;
@@ -31,19 +32,16 @@ const Reply = Schema.Union([
   Schema.Struct({ ok: Schema.Literals([true]), data: Schema.Unknown }),
   Schema.Struct({ ok: Schema.Literals([false]), error: Schema.optionalKey(Schema.String) })
 ]);
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-const failure = (error: unknown) => new Error(errorMessage(error));
+const failure = (error: unknown) => BoundaryError.from(error, errorMessage(error));
 export const sendEffect = Effect.fn('UI.send')(function* <A extends keyof Replies>(
   action: A, fields: Record<string, unknown> = {}
-): Effect.fn.Return<Replies[A], Error> {
+): Effect.fn.Return<Replies[A], BoundaryError> {
   const raw: unknown = yield* Effect.tryPromise({
     try: () => chrome.runtime.sendMessage({ target: 'background', action, ...fields }),
     catch: failure
   });
   const response = yield* Schema.decodeUnknownEffect(Reply)(raw).pipe(Effect.mapError(failure));
-  if (!response.ok) return yield* Effect.fail(new Error(response.error || 'Ember Page did not respond. Reopen the extension and try again.'));
+  if (!response.ok) return yield* BoundaryError.from(response, response.error || 'Ember Page did not respond. Reopen the extension and try again.');
   // Background action schemas own the data contract for these extension-only replies.
   return response.data as Replies[A];
 });

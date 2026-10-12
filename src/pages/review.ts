@@ -1,8 +1,9 @@
+import { errorMessage } from '../domain/errors.ts';
 import { Effect } from 'effect';
-import type { Article } from './types.ts';
-import { send, status, busy, hostname, element, control, errorMessage, sendEffect } from './ui.ts';
-import { articleForMode } from './preview.ts';
-import { sanitizeArticle } from './sanitize.ts';
+import type { Article } from '../domain/types.ts';
+import { send, status, busy, hostname, element, control, sendEffect } from './ui.ts';
+import { articleForMode } from '../domain/preview.ts';
+import { sanitizeArticle } from '../extraction/sanitize.ts';
 let capturedArticle: (Article & { textContent: string }) | undefined;
 const textOnly = control('#text-only', 'input');
 textOnly.addEventListener('change', renderPreview);

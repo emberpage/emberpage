@@ -7,7 +7,7 @@ import {
 import { readFile } from "node:fs/promises";
 import { build } from "esbuild";
 import { Effect, Predicate, Schema } from "effect";
-import { MetadataIndexer, rankedArticles } from "./indexer.ts";
+import { IndexingError, MetadataIndexer, rankedArticles } from "./indexer.ts";
 import type { AggregatorStore } from "./store.ts";
 import type { MetadataDirectory } from "./types.ts";
 
@@ -187,7 +187,7 @@ export function createAggregatorServer({
       // Promise boundary registers this manual run for joined shutdown.
       yield* Effect.tryPromise({
         try: () => indexer.refresh(),
-        catch: (cause) => cause,
+        catch: (cause) => cause instanceof IndexingError ? cause : new RequestError({ message: cause instanceof Error ? cause.message : "The metadata refresh failed.", status: 500, cause }),
       });
       json(response, 200, yield* snapshot());
       return;

@@ -1,5 +1,5 @@
 import { Predicate } from 'effect';
-import type { Article, ArticleCopy, Inspection, Rating } from '../types.ts';
+import type { Article, ArticleCopy, Inspection, Rating } from './types.ts';
 import { decodeArticle } from './article.ts';
 const MIN_ARTICLE_CHARACTERS = 1000;
 function failure(inspection: Inspection | null | undefined) {
@@ -127,7 +127,7 @@ export async function filterCandidates(
     : [];
   for (const input of inputs) {
     const supplied: Partial<ArticleCopy> = input as Partial<
-      import('../types.ts').ArticleCopy
+      import('./types.ts').ArticleCopy
     >;
     let decoded: ArticleCopy;
     try {
