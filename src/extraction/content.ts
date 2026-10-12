@@ -1,5 +1,5 @@
 import { BoundaryError } from '../domain/errors.ts';
-import { Effect } from 'effect';
+import { Effect, Schema } from 'effect';
 import type { Article } from '../domain/types.ts';
 import { Readability } from '@mozilla/readability';
 import {
@@ -512,11 +512,33 @@ function articleByline(sourceDocument: Document, extractedByline: string|null|un
     if (value && !/^https?:\/\//i.test(value)) return value.slice(0, 500);
   }
   const byline = clean(extractedByline);
+  if (byline) {
+    const person = Schema.Union([Schema.String, Schema.Struct({ name: Schema.String })]);
+    const metadataSchema = Schema.Struct({
+      author: Schema.Union([person, Schema.Array(person)])
+    });
+    for (const script of sourceDocument.querySelectorAll('script[type="application/ld+json"]')) {
+      if ((script.textContent?.length || 0) > 64 * 1024) continue;
+      try {
+        const metadata: unknown = JSON.parse(script.textContent || '');
+        const graph = Schema.decodeUnknownOption(Schema.Struct({'@graph': Schema.Array(Schema.Unknown)}))(metadata);
+        const candidates: readonly unknown[] = Array.isArray(metadata) ? metadata : graph._tag === 'Some' ? graph.value['@graph'] : [metadata];
+        for (const candidate of candidates.slice(0, 100)) {
+          const candidateAuthor = Schema.decodeUnknownOption(metadataSchema)(candidate);
+          if (candidateAuthor._tag === 'None') continue;
+          const decoded = candidateAuthor.value;
+          const authors: readonly (string | {readonly name: string})[] = Array.isArray(decoded.author) ? decoded.author : [decoded.author];
+          const name = authors.map(author => clean(typeof author === 'string' ? author : author.name)).join(', ');
+          if (name === byline) return byline.slice(0, 500);
+        }
+      } catch { /* Invalid metadata is not author evidence. */ }
+    }
+  }
   if (!byline) return '';
   const authorToken =
     /(?:^|[\s_-])(?:byline|author|dateline|writtenby|p-author)(?:$|[\s_-])/i;
   for (const node of sourceDocument.querySelectorAll(
-    '[rel~="author"], [itemprop~="author"], [class], [id]'
+    '[rel~="author"], [itemprop~="author"], [class*="author" i], [class*="byline" i], [class*="dateline" i], [class*="writtenby" i], [id*="author" i], [id*="byline" i], [id*="dateline" i], [id*="writtenby" i]'
   )) {
     if (
       !node.matches('[rel~="author"], [itemprop~="author"]') &&
@@ -546,11 +568,28 @@ async function captureArticleSnapshot(
       throw new Error('Open an article on a regular web page to capture it.');
     }
     url.hash = '';
+    const walker = sourceDocument.createTreeWalker(sourceDocument);
+    let nodes = 0, characters = 0;
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      characters += node.nodeValue?.length || 0;
+      if (node.nodeType === 1)
+        for (const attribute of (node as Element).attributes) characters += attribute.value.length;
+      let depth = 0;
+      for (let parent = node.parentNode; parent; parent = parent.parentNode)
+        if (++depth > 100) throw new Error('This page exceeds the capture depth limit.');
+      if (++nodes > 50_000 || characters > 8 * 1024 * 1024)
+        throw new Error('This page exceeds the capture structure limit.');
+    }
     const clone = sourceDocument.cloneNode(true) as Document;
     for (const node of clone.querySelectorAll(
-      '[hidden], [aria-hidden="true"], script, style, noscript, form, iframe'
+      '[hidden], [aria-hidden="true"], style, noscript, form, iframe'
     ))
       node.remove();
+    // Readability reads inert schema.org metadata; it removes scripts from its output.
+    for (const script of clone.querySelectorAll('script'))
+      if (script.getAttribute('type') !== 'application/ld+json' || (script.textContent?.length || 0) > 64 * 1024)
+        script.remove();
     const extracted = new Readability(clone).parse();
     if (!extracted?.content)
       throw new Error(

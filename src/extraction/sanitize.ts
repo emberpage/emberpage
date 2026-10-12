@@ -62,16 +62,31 @@ const ALLOWED_TAGS = new Set([
 ]);
 const DROP_TAGS = new Set([
   'script', 'style', 'noscript', 'template', 'iframe', 'frame',
-  'object', 'embed', 'svg', 'math', 'source',
+  'object', 'embed', 'svg', 'source', 'annotation', 'annotation-xml',
   'video', 'audio', 'track', 'canvas', 'form', 'input', 'button',
   'select', 'textarea', 'option', 'link', 'meta', 'base',
 ]);
 
 
+const MATH_TAGS = new Set(['math', 'mrow', 'mi', 'mn', 'mo', 'mtext', 'mfrac', 'msqrt', 'mroot', 'msub', 'msup', 'msubsup', 'munder', 'mover', 'munderover', 'mtable', 'mtr', 'mtd', 'semantics']);
+
 export function sanitizeArticle(html: unknown, baseUrl: string) {
   const template = document.createElement('template');
   template.innerHTML = typeof html === 'string' ? html : '';
   const output = document.createElement('div');
+  // Rewrite local targets into our own namespace, without retaining page/global IDs.
+  const targets = new Map<string, string>();
+  const reserved = new Set([...template.content.querySelectorAll('[id]')].map(element => element.id).filter(id => /^ember-ref-\d{1,5}$/.test(id)));
+  let reference = 0;
+  for (const element of template.content.querySelectorAll('[id]')) {
+    if (targets.size >= 50_000) break;
+    const id = element.getAttribute('id') || '';
+    if (id && id.length <= 500 && !targets.has(id)) {
+      while (reserved.has(`ember-ref-${reference}`)) reference++;
+      targets.set(id, reserved.has(id) ? id : `ember-ref-${reference++}`);
+    }
+  }
+  const assigned = new Set<string>();
   let visited = 0, images = 0, imageUriLength = 0, imagePixels = 0;
 
   
@@ -106,11 +121,16 @@ export function sanitizeArticle(html: unknown, baseUrl: string) {
       images++; imageUriLength += src.length; imagePixels += dimensions.width * dimensions.height;
       return;
     }
-    if (!ALLOWED_TAGS.has(tag)) {
+    if (!ALLOWED_TAGS.has(tag) && !MATH_TAGS.has(tag)) {
       for (const child of node.childNodes) appendClean(child, parent, depth + 1);
       return;
     }
-    const clean = document.createElement(tag);
+    const clean = MATH_TAGS.has(tag)
+      ? document.createElementNS('http://www.w3.org/1998/Math/MathML', tag)
+      : document.createElement(tag);
+    const target = targets.get(element.getAttribute('id') || '');
+    if (target && !assigned.has(target)) { clean.setAttribute('id', target); assigned.add(target); }
+    if (tag === 'math' && element.getAttribute('display') === 'block') clean.setAttribute('display', 'block');
     if (tag === 'table') {
       clean.setAttribute('tabindex', '0');
       clean.setAttribute('aria-label', 'Article table');
@@ -118,7 +138,11 @@ export function sanitizeArticle(html: unknown, baseUrl: string) {
     if (tag === 'a' && element.hasAttribute('href')) {
       try {
         const url = new URL(element.getAttribute('href') || '', baseUrl);
-        if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) {
+        const local = new URL(baseUrl); local.hash = '';
+        const destination = new URL(url); destination.hash = '';
+        const target = targets.get(decodeURIComponent(url.hash.slice(1)));
+        if (url.hash && destination.href === local.href && target) clean.setAttribute('href', `#${target}`);
+        else if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) {
           const sensitive = /^(?:access_token|token|auth|authorization|email|session|sessionid|session_id|user_id|password|key|api_key)$/i;
           if (![...url.searchParams.keys()].some(key => sensitive.test(key))) {
             clean.setAttribute('href', normalizeUrl(url.href));

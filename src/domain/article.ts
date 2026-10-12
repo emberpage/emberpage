@@ -96,57 +96,68 @@ async function copy(bytes: Uint8Array<ArrayBufferLike>, article: Article) {
     size: bytes.byteLength
   };
 }
+/** Native gzip, bounded before parsing; the envelope remains provider-compatible JSON. */
+async function gzipBytes(bytes: Uint8Array<ArrayBuffer>, decompress = false) {
+  const stream = new Blob([bytes]).stream().pipeThrough(
+    decompress ? new DecompressionStream('gzip') : new CompressionStream('gzip')
+  );
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_ARTICLE_BYTES) {
+        await reader.cancel();
+        throw new Error('Expanded article file is too large.');
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const result = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
+  return result;
+}
 export async function encodeArticle(
   input: unknown,
-  options:
-    | {
-        now?: number | undefined;
-      }
-    | undefined = {}
+  options: { now?: number | undefined } = {}
 ) {
-  const article: Article = validateArticle(input, options);
-  const bytes: Uint8Array<ArrayBuffer> = encoder.encode(
-    JSON.stringify({ format: 'emberpage.article', version: 1, article })
-  );
-  if (bytes.byteLength > MAX_ARTICLE_BYTES)
-    throw new Error('Article file is too large.');
+  const article = validateArticle(input, options);
+  const compressed = await gzipBytes(encoder.encode(JSON.stringify(article)));
+  let binary = '';
+  for (let offset = 0; offset < compressed.length; offset += 32_768)
+    binary += String.fromCharCode(...compressed.subarray(offset, offset + 32_768));
+  const bytes = encoder.encode(JSON.stringify({
+    format: 'emberpage.article', version: 2, encoding: 'gzip', payload: btoa(binary)
+  }));
+  if (bytes.byteLength > MAX_ARTICLE_BYTES) throw new Error('Article file is too large.');
   return copy(bytes, article);
 }
 export async function decodeArticle(
   input: unknown,
-  {
-    blobHash,
-    now = Date.now()
-  }:
-    | {
-        blobHash?: string | undefined;
-        now?: number | undefined;
-      }
-    | undefined = {}
+  { blobHash, now = Date.now() }: { blobHash?: string | undefined; now?: number | undefined } = {}
 ) {
-  if (
-    !(input instanceof Uint8Array) ||
-    !input.byteLength ||
-    input.byteLength > MAX_ARTICLE_BYTES
-  )
+  if (!(input instanceof Uint8Array) || !input.byteLength || input.byteLength > MAX_ARTICLE_BYTES)
     throw new Error('Invalid article file size.');
-  const bytes: Uint8Array<ArrayBuffer> = input.slice();
-  if (
-    blobHash !== undefined &&
-    (!HASH.test(blobHash) || (await sha256(bytes)) !== blobHash)
-  )
+  const bytes = input.slice();
+  if (blobHash !== undefined && (!HASH.test(blobHash) || await sha256(bytes) !== blobHash))
     throw new Error('Article file hash does not match.');
-  const file: unknown = JSON.parse(decoder.decode(bytes)) as unknown;
-  const value: Record<string, unknown> | null = file as Record<
-    string,
-    unknown
-  > | null;
-  if (
-    !file ||
-    Array.isArray(file) ||
-    value?.format !== 'emberpage.article' ||
-    value?.version !== 1
-  )
-    throw new Error('Unsupported article format.');
-  return copy(bytes, validateArticle(value?.article, { now }));
+  const envelope = Schema.decodeUnknownSync(Schema.Struct({
+    format: Schema.Literal('emberpage.article'),
+    version: Schema.Literals([1, 2]),
+    article: Schema.optionalKey(Schema.Unknown),
+    encoding: Schema.optionalKey(Schema.Literal('gzip')),
+    payload: Schema.optionalKey(Schema.String)
+  }))(JSON.parse(decoder.decode(bytes)) as unknown);
+  // Existing archives are an explicit format, never a retry or alternate transport.
+  if (envelope.version === 1) return copy(bytes, validateArticle(envelope.article, { now }));
+  if (envelope.encoding !== 'gzip' || !envelope.payload ||
+      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(envelope.payload))
+    throw new Error('Invalid compressed article.');
+  const compressed = Uint8Array.from(atob(envelope.payload), character => character.charCodeAt(0));
+  const expanded = await gzipBytes(compressed, true);
+  return copy(bytes, validateArticle(JSON.parse(decoder.decode(expanded)) as unknown, { now }));
 }

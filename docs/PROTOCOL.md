@@ -4,10 +4,10 @@ Current contract for article files, listings and ratings. The event kinds are Em
 
 ## Article file and hashes
 
-The file is exact UTF-8 JSON:
+New files are UTF-8 JSON envelopes containing Base64 of native gzip-compressed article JSON:
 
 ```json
-{"format":"emberpage.article","version":1,"article":{"url":"https://example.org/article","title":"Article title","byline":"Author","capturedAt":1791700000000,"content":"<p>Sanitized HTML containing embedded WebP images.</p>"}}
+{"format":"emberpage.article","version":2,"encoding":"gzip","payload":"<Base64 gzip of article JSON>"}
 ```
 
 `url` is normalized HTTP(S) without credentials or fragment, preserving content-defining query parameters. `capturedAt` is integer milliseconds, nonnegative and no more than 60 seconds in the future. Age alone does not invalidate a body. Required fields retain their known types. Bounded optional fields are inert and ignored for display; unknown format/version is rejected.
@@ -16,7 +16,7 @@ The file is exact UTF-8 JSON:
 - `contentHash`: SHA-256 of UTF-8 `JSON.stringify([1,url,title,byline,content])`. Capture time and optional metadata are excluded.
 - `blobHash`: SHA-256 of the exact uploaded file bytes.
 
-Maximum file size is 2 MiB. The same content can have different blob hashes when file serialization, capture time, or optional fields differ. Ratings attach to `(urlHash,contentHash)`, not blob identity or replication count.
+Maximum file and expanded JSON size are each 2 MiB. Decompression stops at the expanded limit before JSON parsing. Version 1 uncompressed archives remain readable; new writes always use version 2. Compression changes blob identity, not content identity. The same content can have different blob hashes when file serialization, capture time, or optional fields differ. Ratings attach to `(urlHash,contentHash)`, not blob identity or replication count.
 
 ## Fixed Blossom provider
 
@@ -86,7 +86,7 @@ An explicit discovery pass checks at most 100 recent listings, deduplicates cont
 
 After file and metadata verification, inspect and sanitize the HTML locally. Require at least 1,000 visible characters, one content block, at most 10 images, and text density between 0.1 and 1, excluding embedded image data. Bound inspection to 50,000 DOM nodes and 100 nesting levels. These are readability heuristics, not truth checks.
 
-Render allowlisted inert HTML and embedded still WebP only. Remove scripts, event handlers, frames, forms, remote resource loads and unsafe URLs. Before native image decoding, inspect RIFF/frame headers and reject malformed or animated WebP, image floods, dimensions above 8,192 px on either edge, or more than 16 million pixels per image. The article total is at most 32 million decoded pixels. Writer, preview and reader apply the same bounds.
+Render allowlisted inert HTML, presentation MathML and embedded still WebP only. Math attributes and annotations are removed. Local references are rewritten into an isolated ID namespace; external links retain the existing URL checks. Remove scripts, event handlers, frames, forms, remote resource loads and unsafe URLs. Before native image decoding, inspect RIFF/frame headers and reject malformed or animated WebP, image floods, dimensions above 8,192 px on either edge, or more than 16 million pixels per image. The article total is at most 32 million decoded pixels. Writer, preview and reader apply the same bounds.
 
 Rank eligible snapshots by `(up - down + 2) / (ageHours + 2)^1.5`, using seven-day ratings and the earliest observed listing in the discovery window for age. Each rating direction is capped at 50; content hash then blob hash breaks ties. Replication count does not increase the score.
 
@@ -104,7 +104,7 @@ These application limits do not promise provider capacity or retention.
 | Rating metadata | 5,000 events / 4 MiB |
 | Pending share receipts | 20 records / 256 KiB |
 
-Contributor and reader stores evict whole records atomically by least recent use, accounting for stored bytes. Browsing cannot evict contributor copies. Discovery evicts oldest listings; ratings retain newest votes in the active window. Pending shares remain protected until explicit retry, discard or quota handling. If only protected records remain, reject the new write. Local eviction never deletes remote files. Clearing article caches retains the signing key.
+Each article store also caps expanded article JSON at 16 MiB; archive listing decodes one record at a time. Contributor and reader stores evict whole records atomically by least recent use, accounting for stored bytes. Browsing cannot evict contributor copies. Discovery evicts oldest listings; ratings retain newest votes in the active window. Pending shares remain protected until explicit retry, discard or quota handling. If only protected records remain, reject the new write. Local eviction never deletes remote files. Clearing article caches retains the signing key.
 
 If captured images exceed the limits, keep the preview with descriptive placeholders and disable saving/sharing until the user explicitly chooses text only or discards it. Do not silently save a partial image capture.
 

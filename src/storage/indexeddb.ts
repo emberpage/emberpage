@@ -10,6 +10,7 @@ type StoredArticle = Omit<ArticleCopy, 'article'> & {
   pendingShare: boolean;
   storedAt: number;
   lastAccessedAt: number;
+  expandedSize?: number;
 };
 type ShareReceipt = import('../domain/types.ts').ShareReceipt;
 import { decodeArticle } from '../domain/article.ts';
@@ -173,10 +174,10 @@ export class LocalVault {
           Number(b.pendingShare) - Number(a.pendingShare) || lru(a, b)
       ),
       kept: StoredArticle[] = [];
-    let bytes: number = 0;
+    let bytes = 0, expanded = 0;
     for (const record of ordered) {
       const size: number = recordBytes(record);
-      if (kept.length >= this.maxRecords || bytes + size > this.maxBytes) {
+      if (kept.length >= this.maxRecords || bytes + size > this.maxBytes || expanded + (record.expandedSize ?? record.bytes.length) > MAX_VAULT_BYTES) {
         if (record.pendingShare)
           throw new Error(
             'The archive is full of pending shares. Existing copies were kept.'
@@ -184,6 +185,7 @@ export class LocalVault {
         continue;
       }
       bytes += size;
+      expanded += record.expandedSize ?? record.bytes.length;
       kept.push(record);
     }
     return kept.sort(lru);
@@ -220,6 +222,7 @@ export class LocalVault {
           'Finish or discard the pending share before replacing this file.'
         );
       saved = {
+        expandedSize: encoder.encode(JSON.stringify(decoded.article)).byteLength,
         bytes: decoded.bytes,
         urlHash: decoded.urlHash,
         contentHash: decoded.contentHash,
@@ -288,18 +291,14 @@ export class LocalVault {
     const records: StoredArticle[] = await this.store.update(
       (records: StoredArticle[]) => this.bounded(records)
     );
-    return Promise.all(
-      records.map(async (record: StoredArticle) => ({
-        ...record,
-        article: (
-          await decodeArticle(record.bytes, {
-            blobHash: record.blobHash,
-            now: this.now()
-          })
-        ).article
-      }))
-    );
+    const result: (StoredArticle & {article: ArticleCopy['article']})[] = [];
+    for (const record of records) {
+      const decoded = await decodeArticle(record.bytes, {blobHash: record.blobHash, now: this.now()});
+      result.push({...record, article: decoded.article});
+    }
+    return result;
   }
+
   async flag(
     contentHash: string,
     field: 'shared' | 'pendingShare',

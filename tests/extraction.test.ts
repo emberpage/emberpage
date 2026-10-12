@@ -249,3 +249,32 @@ void test('capture ignores author-like navigation guesses and retains explicit a
   const classByline=fixture(html.replace('<h1>Coastal study</h1>','<h1>Coastal study</h1><span class="article-byline">A class author</span>'));
   assert.equal((await capture(classByline)).article.byline,'A class author');
 });
+
+void test('local references and inert MathML survive repeated sanitization', () => {
+  fixture('');
+  const clean = sanitizeArticle('<script id="removed"></script><p><a href="#note">Note</a></p><p id="note">Reference</p><math display="block" onclick="bad()"><mfrac><mi>x</mi><mn>2</mn></mfrac><annotation-xml><script>bad()</script></annotation-xml></math>', 'https://example.com/story');
+  const element = document.createElement('div'); element.innerHTML = clean;
+  const target = element.querySelector('p[id]');
+  assert.equal(element.querySelector('a')?.getAttribute('href'), `#${target?.id}`);
+  assert.equal(element.querySelector('math')?.namespaceURI, 'http://www.w3.org/1998/Math/MathML');
+  assert.equal(element.querySelector('mfrac')?.textContent, 'x2');
+  assert.equal(element.querySelectorAll('script,annotation-xml,[onclick]').length, 0);
+  assert.equal(sanitizeArticle(clean, 'https://example.com/story'), clean);
+});
+
+void test('capture uses explicit schema.org author metadata without executing scripts', async () => {
+  const prose = '<p>Archiving a readable document preserves the text and its author metadata for future readers. This paragraph gives the article enough detail to extract reliably.</p>'.repeat(8);
+  const doc = fixture(`<html><head><title>Archiving documents</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Archiving documents","author":{"@type":"Person","name":"Ada Shore"}}</script></head><body><article><h1>Archiving documents</h1>${prose}</article></body></html>`);
+  const result = await capture(doc);
+  assert.equal(result.article.byline, 'Ada Shore');
+  assert.ok(!result.article.content.includes('<script'));
+});
+
+void test('capture rejects oversized and deeply nested source DOMs before cloning', async () => {
+  const large = fixture('<p>' + 'x'.repeat(8 * 1024 * 1024 + 1) + '</p>');
+  const oversized = await Effect.runPromise(captureArticleEffect(large));
+  assert.equal(oversized.ok, false);
+  const nested = fixture('<div>'.repeat(102) + '<p>A nested article.</p>' + '</div>'.repeat(102));
+  const deep = await Effect.runPromise(captureArticleEffect(nested));
+  assert.equal(deep.ok, false);
+});

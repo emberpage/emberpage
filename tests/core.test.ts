@@ -41,15 +41,14 @@ await test('normalized identity preserves meaningful queries and rejects credent
       assert.throws(() => normalizeUrl('javascript:bad()'));
     })
   ));
-await test('one public JSON format uses exact blob bytes and stable content identity without expiry', () =>
+await test('compressed JSON format uses exact blob bytes and stable content identity without expiry', () =>
   Effect.runPromise(
     Effect.promise(async () => {
       const first = await encodeArticle(article, { now });
-      assert.deepEqual(JSON.parse(new TextDecoder().decode(first.bytes)), {
-        format: 'emberpage.article',
-        version: 1,
-        article
-      });
+      const envelope = JSON.parse(new TextDecoder().decode(first.bytes)) as {version:number;encoding:string};
+      assert.equal(envelope.version, 2);
+      assert.equal(envelope.encoding, 'gzip');
+      assert.deepEqual((await decodeArticle(first.bytes, {now})).article, article);
       assert.equal(first.blobHash, await sha256(first.bytes));
       assert.equal(first.urlHash, await hashUrl(article.url));
       assert.equal(
@@ -253,3 +252,17 @@ await test('receipts reserve quota before uploads, persist uploaded state, and n
       await receipts.clear();
     })
   ));
+
+await test('gzip rejects expanded byte bombs, truncated streams and invalid encoding', () =>
+  Effect.runPromise(Effect.promise(async () => {
+    const content = 'a'.repeat(MAX_ARTICLE_BYTES + 1);
+    const compressed = new Uint8Array(await new Response(new Blob([content]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+    const payload = Buffer.from(compressed).toString('base64');
+    const file = (value: string) => new TextEncoder().encode(JSON.stringify({format:'emberpage.article', version:2, encoding:'gzip', payload:value}));
+    await assert.rejects(decodeArticle(file(payload)), /large/);
+    await assert.rejects(decodeArticle(file(Buffer.from(compressed.slice(0, -4)).toString('base64'))));
+    await assert.rejects(decodeArticle(file('not base64')));
+    const encoded = await encodeArticle({...article, content:'<p>Repeated archival prose.</p>'.repeat(1000)}, {now});
+    assert.ok(encoded.size < 1000);
+    assert.deepEqual((await decodeArticle(encoded.bytes, {now})).article, encoded.article);
+  })));
