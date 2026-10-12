@@ -1,17 +1,16 @@
 import { Effect, Schema } from "effect";
 import { finalizeEvent, generateSecretKey } from "nostr-tools/pure";
-import { decodeArticle, MAX_ARTICLE_BYTES } from "./core/article.js";
+import { decodeArticle, MAX_ARTICLE_BYTES } from "./core/article.ts";
 import {
   NostrDirectory,
   PROVIDER,
-  RELAY,
   LISTING_KIND,
   RATING_KIND,
   LISTING_TAG,
   RATING_TAG,
   validateListingEvent,
   validateVoteEvent,
-} from "./network/nostr.js";
+} from "./network/nostr.ts";
 import type {
   ArticleCopy,
   Listing,
@@ -19,7 +18,8 @@ import type {
   UploadReceipt,
   Vote,
 } from "./types.ts";
-export { PROVIDER, RELAY };
+export { PROVIDER };
+import type { NostrSocketConstructor } from "./network/nostr.ts";
 
 export class NetworkError extends Schema.TaggedError<NetworkError>()(
   "NetworkError",
@@ -51,9 +51,7 @@ async function installationIdentity(): Promise<Uint8Array> {
     if (stored !== undefined) {
       if (typeof stored !== "string" || !HASH.test(stored))
         throw new Error("This installation’s sharing identity is damaged. You can still read saved copies.");
-      return Uint8Array.from(stored.match(/../g)!, (byte) =>
-        parseInt(byte, 16),
-      );
+      return Uint8Array.from({length:32}, (_,index) => parseInt(stored.slice(index*2,index*2+2),16));
     }
     const secret = generateSecretKey();
     await chrome.storage.local.set({
@@ -145,7 +143,7 @@ const responseBytes = Effect.fn("EmberNetwork.responseBytes")(function* (
 
 interface NetworkOptions {
   fetch?: typeof globalThis.fetch;
-  WebSocket?: typeof globalThis.WebSocket;
+  WebSocket?: NostrSocketConstructor;
   identity?: () => Promise<Uint8Array>;
   now?: () => number;
   timeoutMs?: number;
@@ -253,7 +251,7 @@ export class EmberNetwork {
       );
     }
     const raw: unknown = yield* Effect.try({
-      try: () => JSON.parse(decoder.decode(bytes)),
+      try: (): unknown => JSON.parse(decoder.decode(bytes)),
       catch: failure,
     });
     const receipt = yield* Schema.decodeUnknownEffect(receiptSchema)(raw).pipe(

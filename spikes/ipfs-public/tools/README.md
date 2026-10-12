@@ -1,1 +1,0 @@
-The disposable cloudflared binary and release archive were removed after testing. Download the macOS ARM64 archive from the official cloudflare/cloudflared GitHub release and extract its cloudflared executable here to reproduce external-check.mjs. Tested version: 2026.10.0. No global install or saved tunnel configuration was made.

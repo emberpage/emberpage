@@ -5,9 +5,10 @@ import {
   type ServerResponse,
 } from "node:http";
 import { readFile } from "node:fs/promises";
+import { build } from "esbuild";
 import { Effect, Predicate, Schema } from "effect";
 import { MetadataIndexer, rankedArticles } from "./indexer.ts";
-import type { AggregatorStore } from "./store.js";
+import type { AggregatorStore } from "./store.ts";
 import type { MetadataDirectory } from "./types.ts";
 
 const publicRoot = new URL("./public/", import.meta.url);
@@ -15,7 +16,7 @@ const FILES = new Map<string, readonly [URL, string]>([
   ["/", [new URL("index.html", publicRoot), "text/html"]],
   ["/index.html", [new URL("index.html", publicRoot), "text/html"]],
   ["/dashboard.css", [new URL("dashboard.css", publicRoot), "text/css"]],
-  ["/dashboard.js", [new URL("dashboard.js", publicRoot), "text/javascript"]],
+
   ["/theme.css", [new URL("../public/theme.css", import.meta.url), "text/css"]],
   ["/fonts/geist-sans.woff2", [new URL("../public/fonts/geist-sans.woff2", import.meta.url), "font/woff2"]],
   ["/fonts/geist-mono.woff2", [new URL("../public/fonts/geist-mono.woff2", import.meta.url), "font/woff2"]],
@@ -52,7 +53,7 @@ const boundedInput = Effect.fn("Aggregator.boundedInput")(
           });
         }
         let count = 0;
-        for await (const chunk of request) {
+        for await (const chunk of request as AsyncIterable<Buffer>) {
           count += Buffer.byteLength(chunk);
           if (count > 16384)
             throw new RequestError({
@@ -83,6 +84,15 @@ export function createAggregatorServer({
   intervalMs?: number;
 }): AggregatorServer {
   const indexer = new MetadataIndexer({ store, directory, intervalMs });
+  const dashboardBundle = Effect.runSync(Effect.cached(Effect.tryPromise({
+    try: async () => {
+      const result = await build({entryPoints:[new URL("dashboard.ts",publicRoot).pathname],bundle:true,write:false,format:"esm",platform:"browser",target:"chrome116"});
+      const content = result.outputFiles?.[0]?.text;
+      if (content === undefined) throw new Error("Dashboard bundle missing.");
+      return content;
+    },
+    catch: cause => new RequestError({message:"The dashboard could not build.",status:500,cause}),
+  })));
   const articles = () =>
     rankedArticles(store.listArticles(), store.listVotes());
   const snapshot = Effect.fn("Aggregator.snapshot")(function* () {
@@ -96,7 +106,6 @@ export function createAggregatorServer({
       lastRefresh: store.lastRefresh(),
     };
   });
-  let server: AggregatorServer;
   const handle = Effect.fn("Aggregator.request")(function* (
     request: IncomingMessage,
     response: ServerResponse,
@@ -120,6 +129,12 @@ export function createAggregatorServer({
         }),
     });
     if (request.method === "GET") {
+      if (url.pathname === "/dashboard.js") {
+        const bundle = yield* dashboardBundle;
+        response.writeHead(200,{...HEADERS,"Content-Type":"text/javascript; charset=utf-8"});
+        response.end(bundle);
+        return;
+      }
       if (url.pathname === "/api/dashboard") {
         json(response, 200, yield* snapshot());
         return;
@@ -200,7 +215,7 @@ export function createAggregatorServer({
       ),
     );
   });
-  server = Object.assign(native, { indexer });
+  const server: AggregatorServer = Object.assign(native, { indexer });
   server.on("close", () => {
     void indexer.stopScheduler();
   });

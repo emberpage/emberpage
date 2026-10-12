@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/popup.ts",
+    "src/review.ts",
+    "src/reader.ts",
+    "src/offscreen.ts",
+    "aggregator/public/dashboard.ts",
+    "tests/*.test.ts",
+    "scripts/smoke*.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,mts,cts}",
+    "entrypoints/**/*.{ts,tsx,mts,cts}",
+    "aggregator/**/*.{ts,tsx,mts,cts}",
+    "tests/**/*.{ts,tsx,mts,cts}",
+    "scripts/*.{ts,tsx,mts,cts}",
+    "*.config.{ts,tsx,mts,cts}"
+  ],
+  "wxt": true,
+  "includeEntryExports": true
+}

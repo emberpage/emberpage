@@ -11,8 +11,3 @@ artifacts/
 .env
 .env.*
 !.env.example
-spikes/**/browser.js
-!spikes/ipfs-browser/browser.js
-spikes/ipfs-public/check-ui.html
-spikes/ipfs-public/check-main.go
-spikes/ipfs-dependencies/artifacts/

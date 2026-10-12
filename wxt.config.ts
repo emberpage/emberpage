@@ -1,10 +1,17 @@
+import { readFileSync } from "node:fs";
+import { Schema } from "effect";
 import { defineConfig } from "wxt";
+
+const version = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({
+  version: Schema.String.check(Schema.isPattern(/^\d+\.\d+\.\d+$/)),
+})))(readFileSync("package.json", "utf8")).version;
 
 export default defineConfig({
   manifestVersion: 3,
   imports: false,
   vite: () => ({ build: { target: "chrome116", sourcemap: true } }),
   manifest: {
+    version,
     name: "Ember Page",
     description:
       "Keep readable article snapshots for when links break or pages disappear. Save privately by default.",

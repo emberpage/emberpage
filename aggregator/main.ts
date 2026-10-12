@@ -1,10 +1,10 @@
 import { parseArgs } from "node:util";
 import packageInfo from "../package.json" with { type: "json" };
 import { Effect, Predicate, Schema } from "effect";
-import { AggregatorStore } from "./store.js";
+import { AggregatorStore } from "./store.ts";
 import { createAggregatorServer, type AggregatorServer } from "./server.ts";
 import WebSocket from "ws";
-import { NostrDirectory } from "../src/network/nostr.js";
+import { NostrDirectory } from "../src/network/nostr.ts";
 
 class StartupError extends Schema.TaggedError<StartupError>()(
   "AggregatorStartupError",

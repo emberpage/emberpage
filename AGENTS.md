@@ -2,7 +2,7 @@
 
 Keep article capture, sharing, ratings, and serving explicit. Keep the aggregator separate and metadata-only. Preserve validation, quotas, sanitization, and failure recovery when refactoring.
 
-Use pnpm. Run `pnpm check` before publishing changes. Run the browser smoke tests when extension entrypoints or workflows change. Experiments under `spikes/` are isolated and are not production transports.
+Use pnpm. Run `pnpm check` before publishing changes. Run the browser smoke tests when extension entrypoints or workflows change. Keep experiments and research out of the active source tree. Every code module is strict TypeScript and uses Effect; `pnpm check` enforces this.
 
 # Learning more about Effect
 

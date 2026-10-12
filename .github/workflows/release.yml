@@ -34,6 +34,7 @@ jobs:
       - run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm smoke
+      - run: pnpm smoke:images
       - run: pnpm smoke:aggregator
       - run: pnpm test:drive
       - run: pnpm zip && pnpm verify:release

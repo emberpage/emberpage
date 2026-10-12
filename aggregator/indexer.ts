@@ -1,6 +1,6 @@
-import { DISCOVERY_WINDOW_MS } from "../src/network/nostr.js";
+import { DISCOVERY_WINDOW_MS } from "../src/network/nostr.ts";
 import { DateTime, Effect, Fiber, Predicate, Schema, Schedule } from "effect";
-import type { AggregatorStore } from "./store.js";
+import type { AggregatorStore } from "./store.ts";
 import {
   ListingSchema,
   RatingSchema,
@@ -25,7 +25,7 @@ interface RankedRating {
   contentHash: string;
   value: number;
 }
-export const CATEGORIES = [
+const CATEGORIES = [
   "AI",
   "Technology",
   "Finance",
@@ -33,7 +33,7 @@ export const CATEGORIES = [
   "Politics",
   "General",
 ];
-export function categoryFor(entry: Pick<RankedListing, "title" | "byline">) {
+function categoryFor(entry: Pick<RankedListing, "title" | "byline">) {
   const text = `${entry.title} ${entry.byline}`;
   const patterns = [
     /\b(ai|artificial intelligence|machine learning|llm|chatgpt)\b/i,
@@ -109,12 +109,10 @@ export function rankedArticles<T extends RankedListing>(
         a.urlHash.localeCompare(b.urlHash),
     );
 }
-export function errorCode(error: unknown): "timeout" | "network" {
-  const message =
-    Predicate.isObject(error) && Predicate.isString(error.message)
-      ? error.message
-      : "";
-  return /timed? out|timeout/i.test(message) ? "timeout" : "network";
+function errorCode(error: unknown): "timeout" | "network" {
+  return Predicate.hasProperty(error, "code") && error.code === "timeout"
+    ? "timeout"
+    : "network";
 }
 export class IndexingError extends Schema.TaggedError<IndexingError>()(
   "IndexingError",
@@ -389,22 +387,21 @@ export class MetadataIndexer {
   startScheduler(): void {
     if (this.schedulerFiber || this.closed) return;
     this.indexing = true;
-    const self = this;
     this.schedulerFiber = Effect.runFork(
       Effect.scoped(
-        Effect.gen(function* () {
+        Effect.gen({self:this}, function* () {
           yield* Effect.acquireRelease(Effect.void, () =>
             Effect.sync(() => {
-              self.indexing = false;
-              self.nextRunAt = null;
+              this.indexing = false;
+              this.nextRunAt = null;
             }),
           );
-          yield* Effect.gen(function* () {
-            self.nextRunAt = null;
-            if (!self.pending)
-              yield* self.refreshEffect().pipe(Effect.catch(() => Effect.void));
-            self.nextRunAt = (yield* self.timestamp) + self.intervalMs;
-          }).pipe(Effect.repeat(Schedule.spaced(self.intervalMs)));
+          yield* Effect.gen({self:this}, function* () {
+            this.nextRunAt = null;
+            if (!this.pending)
+              yield* this.refreshEffect().pipe(Effect.catch(() => Effect.void));
+            this.nextRunAt = (yield* this.timestamp) + this.intervalMs;
+          }).pipe(Effect.repeat(Schedule.spaced(this.intervalMs)));
         }),
       ),
     );

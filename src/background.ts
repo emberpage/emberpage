@@ -1,10 +1,10 @@
 import { Effect, Predicate, Schema, Semaphore } from "effect";
-import { sha256 } from "./core/article.js";
-import { normalizeUrl } from "./core/url.js";
-import { LocalVault, ShareReceipts } from "./core/storage.js";
-import { VoteLedger } from "./core/votes.js";
-import { CatalogLedger } from "./core/catalog.js";
-import { articleForMode, snapshotSealInput } from "./preview.js";
+import { sha256 } from "./core/article.ts";
+import { normalizeUrl } from "./core/url.ts";
+import { LocalVault, ShareReceipts } from "./core/storage.ts";
+import { VoteLedger } from "./core/votes.ts";
+import { CatalogLedger } from "./core/catalog.ts";
+import { articleForMode, snapshotSealInput } from "./preview.ts";
 import { EmberNetwork } from "./network.ts";
 import { ArticleArchive } from "./archive.ts";
 import type { Article, Inspection } from "./types.ts";
@@ -224,67 +224,67 @@ export function startBackground() {
         if (!tab.url) return yield* reject("Could not read this page URL.");
         const url = tab.url;
         yield* Effect.try({ try: () => normalizeUrl(url), catch: failure });
-        if (captures.has(tabId))
-          return yield* reject("This page is already being prepared.");
-        yield* io(() =>
-          chrome.scripting.executeScript({
-            target: { tabId },
-            files: ["capture.js"],
-          }),
-        );
-        const capture = {
-          token: crypto.randomUUID(),
-          url,
-          count: 0,
-          expiresAt: Date.now() + 30_000,
-        };
-        const raw = yield* Effect.scoped(
-          Effect.gen(function* () {
-            yield* Effect.acquireRelease(
-              Effect.sync(() => {
+        return yield* Effect.scoped(Effect.gen(function* () {
+          const capture = {
+            token: crypto.randomUUID(),
+            url,
+            count: 0,
+            expiresAt: Date.now() + 30_000,
+          };
+          yield* Effect.acquireRelease(
+            Effect.try({
+              try: () => {
+                if (captures.has(tabId)) throw new Error("This page is already being prepared.");
                 captures.set(tabId, capture);
+              },
+              catch: failure,
+            }),
+            () =>
+              Effect.sync(() => {
+                if (captures.get(tabId) === capture) captures.delete(tabId);
               }),
-              () =>
-                Effect.sync(() => {
-                  if (captures.get(tabId) === capture) captures.delete(tabId);
-                }),
-            );
-            return yield* io<unknown>(() =>
-              chrome.tabs.sendMessage(tabId, {
-                action: "CAPTURE_ARTICLE",
-                captureToken: capture.token,
-              }),
-            );
-          }),
-        );
-        const result = yield* Schema.decodeUnknownEffect(captureReply)(
-          raw,
-        ).pipe(Effect.mapError(failure));
-        if (!result.ok)
-          return yield* reject(result.error || "Could not read this page.");
-        const article = {
-          ...result.article,
-          url: normalizeUrl(result.article.url),
-          imageLimitExceeded: result.imageLimitExceeded === true,
-          imageWarning: result.imageWarning || "",
-        };
-        if (message.action === "SAVE_PAGE" && !article.imageLimitExceeded) {
-          const saved = yield* archive.saveEffect(articleForMode(article, false), {
-            share: false,
-          });
-          yield* openPage("reader", saved.contentHash);
+          );
+          yield* io(() =>
+            chrome.scripting.executeScript({
+              target: { tabId },
+              files: ["capture.js"],
+            }),
+          );
+          const raw = yield* io<unknown>(() =>
+            chrome.tabs.sendMessage(tabId, {
+              action: "CAPTURE_ARTICLE",
+              captureToken: capture.token,
+            }),
+          );
+          const result = yield* Schema.decodeUnknownEffect(captureReply)(
+            raw,
+          ).pipe(Effect.mapError(failure));
+          if (!result.ok)
+            return yield* reject(result.error || "Could not read this page.");
+          const article = {
+            ...result.article,
+            url: normalizeUrl(result.article.url),
+            imageLimitExceeded: result.imageLimitExceeded === true,
+            imageWarning: result.imageWarning || "",
+          };
+          if (message.action === "SAVE_PAGE" && !article.imageLimitExceeded) {
+            const saved = yield* archive.saveEffect(articleForMode(article, false), {
+              share: false,
+            });
+            yield* openPage("reader", saved.contentHash);
+            return true;
+          }
+          const id = crypto.randomUUID();
+          const seal = yield* io(() => sha256(snapshotSealInput(article)));
+          yield* io(() =>
+            chrome.storage.session.set({
+              [`draft:${id}`]: article,
+              [`seal:${id}`]: seal,
+            }),
+          );
+          yield* openPage("review", id);
           return true;
-        }
-        const id = crypto.randomUUID();
-        const seal = yield* io(() => sha256(snapshotSealInput(article)));
-        yield* io(() =>
-          chrome.storage.session.set({
-            [`draft:${id}`]: article,
-            [`seal:${id}`]: seal,
-          }),
-        );
-        yield* openPage("review", id);
-        return true;
+        }));
       }
       case "DRAFT": {
         const data = yield* io(() =>

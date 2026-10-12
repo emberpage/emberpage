@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-10-11T22:45:55.102Z",
-  "runtimeOption": "maxWantListSize",
-  "measuredRuntimeTrimTarget": 32,
-  "strictLedgerCeiling": false,
-  "strictWantVectorIngressCeiling": false,
-  "source": "peer-want-lists/ledger.js truncates only entries with status want; in-flight entries excluded",
-  "perFrameBytes": 67584
-}

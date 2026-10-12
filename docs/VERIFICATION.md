@@ -1,8 +1,8 @@
 # What has been tested
 
-## Current checks: 0.1.5
+## Current checks: 0.1.6
 
-On 2026-10-11, the local build passed strict TypeScript, **84 automated tests**, the production build/manifest check, extension and dashboard browser smoke tests, and **20 sequential browser scenarios**. GitHub CI and ZIP checksums are available with each [release](https://github.com/emberpage/emberpage/releases).
+On 2026-10-11, the local build passed strict TypeScript across all code, typed linting and architecture/unused-code scans, **90 automated tests**, the production build/manifest check, extension and dashboard browser smoke tests, and **20 sequential browser scenarios**. GitHub CI and ZIP checksums are available with each [release](https://github.com/emberpage/emberpage/releases).
 
 The [drive log](TEST-DRIVE.md) records keyboard actions, assertions and local screenshot paths. It covers save/read/remove, text-only recovery, missing or hostile content, offline failures, repeated actions, pending shares and count/size eviction. These fixture runs publish nothing. Responsive checks cover 360, 800 and 1,280 px widths. Theme checks verify local Geist fonts and light/dark rendering; extracted article HTML uses the upstream shadcn Typeset stylesheet.
 
@@ -10,7 +10,7 @@ Native Chrome testing separately exercised the real toolbar permission: preview 
 
 ## Earlier live service tests
 
-Before the rebrand, the production flow passed public upload, signed listing, independent-reader download/validation, embedded images and rating discovery. See the [transport report](research/first-release-live.md) and [UI results](research/live-ui.json). Those tests used original synthetic articles and disposable keys; they were not repeated after the namespace change.
+Before the rebrand, the production flow passed public upload, signed listing, independent-reader download/validation, embedded images and rating discovery. The historical results are available in Git history. Those tests used original synthetic articles and disposable keys; they were not repeated after the namespace change.
 
 The earlier report recorded 72 tests under the pre-WXT build. That is historical evidence, not the current test count. Historical signed payloads remain unchanged.
 
@@ -33,6 +33,4 @@ pnpm test:drive
 
 Set `CHROMIUM_EXECUTABLE` if the installed browser differs from Playwright's expected executable.
 
-For isolated image tests, run `SMOKE_SCREENSHOT_PERMISSION=1 node scripts/smoke-images.mjs`. This uses a disposable permission-adjusted harness.
-
-`node scripts/smoke-live.mjs` prepares the live UI harness without publishing. **Adding `LIVE_UI_SMOKE=1` publishes a synthetic article and ratings to public services.** Keep its private recovery journal until cleanup is reconciled.
+For isolated image tests, run `pnpm smoke:images`. This uses a disposable permission-adjusted harness.

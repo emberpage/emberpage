@@ -1,6 +1,6 @@
 import { Deferred, Effect, Schema } from "effect";
-import { encodeArticle } from "./core/article.js";
-import { filterCandidates, rankCandidates } from "./core/candidates.js";
+import { encodeArticle } from "./core/article.ts";
+import { filterCandidates, rankCandidates } from "./core/candidates.ts";
 import type {
   Article,
   ArticleCopy,
@@ -14,7 +14,7 @@ import type {
   Vote,
 } from "./types.ts";
 
-export class ArchiveError extends Schema.TaggedError<ArchiveError>()(
+class ArchiveError extends Schema.TaggedError<ArchiveError>()(
   "ArchiveError",
   { message: Schema.String, cause: Schema.Unknown },
 ) {}
@@ -60,7 +60,7 @@ interface ArchiveOptions {
     delete(hash: string): Promise<unknown>;
     clear(): Promise<unknown>;
   };
-  inspect(article: Article): Promise<Inspection> | Inspection;
+  inspect(this: void, article: Article): Promise<Inspection> | Inspection;
 }
 
 /** Owns explicit share workflows and the distinction between private and public copies. */
@@ -87,17 +87,17 @@ export class ArticleArchive {
     this.receipts = options.receipts;
     this.inspect = options.inspect;
   }
-  private inspectEffect = (article: Article) =>
+  private inspectEffect = (article: Article): Effect.Effect<Inspection, ArchiveError> =>
     io(() => Promise.resolve(this.inspect(article)));
   private eligible = (copies: ArticleCopy[]) =>
-    io(() => filterCandidates(copies, { inspect: this.inspect }));
+    io(() => filterCandidates(copies, { inspect: (article) => this.inspect(article) }));
 
   saveEffect = Effect.fn("ArticleArchive.save")(function* (
     this: ArticleArchive,
     article: Article,
-    { share = false } = {},
+    { share = false }: { share?: boolean } = {},
   ): Effect.fn.Return<ShareResult, Error> {
-    const inspection = yield* this.inspectEffect(article);
+    const inspection: Inspection = yield* this.inspectEffect(article);
     const copy: ArticleCopy = yield* io(() =>
       encodeArticle({ ...article, content: inspection.content }),
     );
@@ -442,9 +442,6 @@ export class ArticleArchive {
   save(article: Article, options = {}) {
     return Effect.runPromise(this.saveEffect(article, options));
   }
-  share(copy: ArticleCopy) {
-    return Effect.runPromise(this.shareEffect(copy));
-  }
   retry(hash: string) {
     return Effect.runPromise(this.retryEffect(hash));
   }
@@ -453,9 +450,6 @@ export class ArticleArchive {
   }
   browse() {
     return Effect.runPromise(this.browseEffect());
-  }
-  discover() {
-    return Effect.runPromise(this.discoverEffect());
   }
   localCatalog() {
     return Effect.runPromise(this.localCatalogEffect());
