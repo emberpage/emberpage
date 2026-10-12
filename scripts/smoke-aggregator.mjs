@@ -24,7 +24,15 @@ const server = createAggregatorServer({ store, directory, host: '127.0.0.1', por
 if (!server.listening) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); }
 const origin = `http://127.0.0.1:${server.address().port}`;
 let browser;
-async function activate(page, selector) { await page.locator(selector).focus(); await page.keyboard.press('Enter'); }
+async function activate(page, selector) {
+  const target = page.locator(selector).first();
+  const closed = target.locator('xpath=ancestor::details[not(@open)]');
+  while (!(await target.isVisible()) && await closed.count()) {
+    await closed.first().locator(':scope > summary').focus();
+    await page.keyboard.press('Enter');
+  }
+  await target.focus(); await page.keyboard.press('Enter');
+}
 try {
   browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -47,6 +55,7 @@ try {
   assert.match(await page.locator('#article-list').textContent(), /Coastal/);
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A'); await page.keyboard.press('Backspace');
   assert.equal(await page.locator('#article-list .article-row').count(), 2);
+  await activate(page, '#filters > summary');
   await page.locator('#source').selectOption('example.org');
   assert.equal(await page.locator('#article-list .article-row').count(), 1);
   await page.locator('#source').selectOption('');
@@ -54,6 +63,7 @@ try {
   assert.equal(await page.locator('#article-list .article-row').count(), 1);
   await page.locator('#category').selectOption('');
   await page.locator('#ranking').focus(); await page.keyboard.press('n'); await page.keyboard.press('Enter');
+  await activate(page, '#filters > summary');
   await mkdir('artifacts', { recursive: true });
   for (const width of [360, 800, 1280]) {
     await page.setViewportSize({ width, height: 900 });
@@ -64,6 +74,10 @@ try {
       await page.screenshot({ path: `artifacts/aggregator-${view}-${width}.png`, fullPage: true });
     }
   }
+  await activate(page, '#tools > summary');
+  await page.locator('#show-article-details').focus(); await page.keyboard.press('Space');
+  assert.equal(await page.evaluate(() => document.body.classList.contains('show-article-details')), true);
+  await activate(page, '#tools > summary');
   assert.match(await page.locator('#storage-list').textContent(), /Article listings/);
   assert.match(await page.locator('#storage-list').textContent(), /2 records/);
   await activate(page, '[data-view="activity"]');

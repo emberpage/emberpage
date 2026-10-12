@@ -14,29 +14,18 @@
     </header>
     <main>
       <section class="review-banner" id="review-controls">
-        <h2>Save or share this article</h2>
-        <p>
-          Review the copy below. Save privately keeps it on this device. Share
-          publicly lets anyone read it and publishes its title and link.
-          Share only content you have permission to distribute.
-        </p>
-        <details>
-          <summary>Before sharing</summary>
-          <p>
-            Check the preview for personal information. Network providers can
-            see your IP address.
-          </p>
+        <h2>Keep this article</h2>
+        <p>Check the preview below. Your saved copy stays on this device.</p>
+        <button id="save" class="primary" disabled>Save privately</button>
+        <details id="article-options" class="options">
+          <summary>More options</summary>
+          <label class="text-choice"><input id="text-only" type="checkbox" disabled />Text only (removes images and formatting)</label>
+          <p>Sharing makes this copy, its title, and its link public. Check for personal information. Share only content you have permission to distribute. Network providers can see your IP address.</p>
+          <div class="actions">
+            <button id="share" class="secondary" disabled>Share publicly</button>
+            <button id="discard" disabled>Discard preview</button>
+          </div>
         </details>
-        <label class="text-choice"
-          ><input id="text-only" type="checkbox" disabled />Text only (removes
-          images and formatting)</label
-        >
-        <div class="actions">
-          <button id="save" class="primary" disabled>Save privately</button
-          ><button id="share" class="secondary" disabled>
-            Share publicly</button
-          ><button id="discard" disabled>Discard</button>
-        </div>
       </section>
       <p id="status" class="status" role="status" aria-live="polite">
         Loading preview…

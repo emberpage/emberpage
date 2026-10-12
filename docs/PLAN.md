@@ -4,9 +4,9 @@ Ember Page saves readable copies of articles. Saving stays private unless the re
 
 ## Extension
 
-The extension extracts the selected page and opens a preview. The contributor can save it privately, share it, or discard it. Sharing saves a local copy, uploads the article file, then publishes its title and link. A failed share keeps the local copy and offers an explicit retry.
+Save article extracts the selected page, saves a private copy, and opens the reader. Options offers a preview before saving; its More options includes public sharing, text-only mode, and discard. Oversized images open the preview for an explicit text-only choice. Sharing saves a local copy, uploads the article file, then publishes its title and link. A failed share keeps the local copy and offers an explicit retry.
 
-Popular shows only downloaded articles that pass integrity, safety, image and readability checks. Opening an article and rating it are separate actions. There is no automatic sharing, voting or background serving.
+Selecting Popular starts a bounded search and shows only downloaded articles that pass integrity, safety, image and readability checks. Opening an article and rating it are separate actions. There is no automatic sharing, voting or background serving.
 
 ## Two services
 

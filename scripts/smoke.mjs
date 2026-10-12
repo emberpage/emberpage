@@ -31,7 +31,13 @@ async function call(page, action, fields = {}) {
   return response.data;
 }
 async function keyboardActivate(page, selector) {
-  await page.locator(selector).focus();
+  const target = page.locator(selector).first();
+  const closed = target.locator('xpath=ancestor::details[not(@open)]');
+  while (!(await target.isVisible()) && await closed.count()) {
+    await closed.first().locator(':scope > summary').focus();
+    await page.keyboard.press('Enter');
+  }
+  await target.focus();
   await page.keyboard.press('Enter');
 }
 
@@ -54,11 +60,9 @@ try {
   const id = new URL(worker.url()).host;
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${id}/popup.html`);
-  await popup.locator('#accept').waitFor({ state: 'visible' });
-  await popup.locator('#accept').focus();
-  assert.equal(await popup.evaluate(() => document.activeElement.id), 'accept');
-  await popup.keyboard.press('Enter');
-  await popup.locator('#app').waitFor({ state: 'visible' });
+  await popup.locator('#library-list .empty').waitFor();
+  assert.equal(await popup.locator('#options').getAttribute('open'), null);
+  assert.deepEqual(publicNetworkCalls, []);
   const articlePage = await context.newPage();
   await articlePage.goto(`${origin}/article?utm_source=test&id=42`);
   await articlePage.waitForFunction(() => document.querySelector('img[src="/figure.png"]').naturalWidth > 0);
@@ -66,13 +70,8 @@ try {
   await popup.locator('#app').waitFor({ state: 'visible' });
   await popup.waitForFunction(() => !document.querySelector('#capture').disabled);
   assert.equal(await worker.evaluate(() => chrome.offscreen.hasDocument()), false, 'Opening Popular and Save must not start a network session.');
-  await popup.keyboard.press('Tab');
-  assert.equal(await popup.evaluate(() => document.activeElement.dataset.view), 'read');
-  await popup.keyboard.press('Tab');
-  assert.equal(await popup.evaluate(() => document.activeElement.dataset.view), 'cache');
-  await popup.keyboard.press('Enter');
   const reviewPromise = context.waitForEvent('page');
-  await keyboardActivate(popup, '#capture');
+  await keyboardActivate(popup, '#previewMenu');
   const review = await reviewPromise;
   await review.waitForLoadState();
   await review.waitForFunction(() => !document.querySelector('#save').disabled);
@@ -88,15 +87,15 @@ try {
   }
   await review.setViewportSize({ width: 1000, height: 800 });
   await review.screenshot({ path: 'artifacts/review.png', fullPage: true });
+  await keyboardActivate(review, '#article-options > summary');
   await review.locator('#text-only').focus();
   assert.equal(await review.evaluate(() => document.activeElement.id), 'text-only');
   await review.keyboard.press('Space');
   assert.equal(await review.locator('#text-only').isChecked(), true);
-  await review.keyboard.press('Tab');
-  assert.equal(await review.evaluate(() => document.activeElement.id), 'save');
-  await review.keyboard.press('Enter');
-  await review.waitForFunction(() => document.querySelector('#review-controls').hidden || document.querySelector('#status').classList.contains('error'));
-  assert.equal(await review.locator('#status').textContent(), 'Saved on this device.');
+  await keyboardActivate(review, '#save');
+  await review.waitForURL('**/reader.html?*');
+  await review.waitForFunction(() => document.querySelector('#article')?.textContent.length > 0);
+  assert.equal(await review.locator('#copy-label').textContent(), 'Private copy');
   await popup.reload();
   await popup.locator('#app').waitFor({ state: 'visible' });
   await keyboardActivate(popup, '[data-view="library"]');
@@ -107,7 +106,7 @@ try {
   await keyboardActivate(popup, '#library-list .item-main');
   const reader = await readerPromise;
   await reader.waitForLoadState();
-  await reader.locator('#source').waitFor({ state: 'visible' });
+  await reader.waitForFunction(() => document.querySelector('#article')?.textContent.length > 0);
   assert.match(await reader.locator('#article').textContent(), /Observation 12/);
   assert.equal(await reader.locator('#article img,#article script').count(), 0);
   assert.equal(await reader.locator('#source').getAttribute('href'), `${origin}/article?id=42`);
@@ -115,10 +114,11 @@ try {
 
   assert.equal(publicNetworkCalls.length, 0, 'Private caching and reading must not publish or query a provider.');
   assert.equal((await call(popup, 'LOCAL_CATALOG')).length, 0, 'Private copies must not enter the popular list.');
+  await keyboardActivate(popup, '#manage');
   await popup.locator('#library-list').getByRole('button', { name: /^Remove / }).click();
   await popup.locator('#library-list .empty').waitFor();
 
-  console.log('PASS: keyboard Popular/Save/Saved, private caching, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
+  console.log('PASS: keyboard direct preview/Saved/Popular, private saving, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
 } finally {
   await context?.close();
   await new Promise(resolve => server.close(resolve));

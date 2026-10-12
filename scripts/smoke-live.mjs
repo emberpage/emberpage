@@ -67,7 +67,13 @@ globalThis.WebSocket=class extends NativeWebSocket {
  }
 };\n`;
 async function activate(page, selector) {
-  await page.locator(selector).focus();
+  const target = page.locator(selector).first();
+  const closed = target.locator('xpath=ancestor::details[not(@open)]');
+  while (!(await target.isVisible()) && await closed.count()) {
+    await closed.first().locator(':scope > summary').focus();
+    await page.keyboard.press('Enter');
+  }
+  await target.focus();
   await page.keyboard.press('Enter');
 }
 async function launch(extension, name) {
@@ -102,8 +108,6 @@ async function launch(extension, name) {
   await helper.evaluate(() => window.installJournal());
   const popup = await context.newPage();
   await popup.goto(`${base}/popup.html`);
-  await popup.locator('#accept').waitFor({ state: 'visible' });
-  await activate(popup, '#accept');
   await popup.locator('#app').waitFor({ state: 'visible' });
   return { context, helper, popup, base };
 }
@@ -204,11 +208,8 @@ try {
       () => document.querySelector('#article img')?.naturalWidth === 128
     );
     await activate(review, '#share');
-    await review.waitForFunction(
-      () =>
-        document.querySelector('#review-controls').hidden ||
-        document.querySelector('#status').classList.contains('error')
-    );
+    await review.waitForURL('**/reader.html?*');
+    await review.waitForFunction(() => document.querySelector('#article')?.textContent.length > 0);
     assert.match(
       await review.locator('#status').textContent(),
       /^Shared publicly/
@@ -256,7 +257,7 @@ try {
     await reader.popup.keyboard.press('Enter');
     const reading = await openReader;
     await reading.waitForLoadState();
-    await reading.locator('#source').waitFor({ state: 'visible' });
+    await reading.waitForFunction(() => document.querySelector('#article')?.textContent.length > 0);
     assert.equal(
       await reading.locator('#title').textContent(),
       preparation.title

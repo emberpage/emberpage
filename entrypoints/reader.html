@@ -11,6 +11,25 @@
     <header class="brand">
       <img class="logo" src="/icons/logo.png" alt="" width="32" height="32" /><strong>Ember Page</strong
       ><span id="copy-label" class="local-label">Saved copy</span>
+      <details id="article-options" class="header-options">
+        <summary>Article options</summary>
+        <div class="options-panel">
+          <a id="source" class="back-link" hidden rel="noreferrer" target="_blank">Open original article</a>
+          <p class="quiet" id="copy-note" hidden>
+            This is a shared copy. Check the original when accuracy matters.
+            Hosting services may remove shared copies.
+          </p>
+          <section id="ratings" hidden>
+            <p id="rating-summary" class="quiet"></p>
+            <p class="quiet">Ratings are public. A public identifier connects your ratings and shares.</p>
+            <div class="actions">
+              <button id="helpful" class="small-button">Helpful copy</button>
+              <button id="incomplete" class="small-button">Incomplete copy</button>
+              <button id="refresh-ratings" class="small-button">Check ratings</button>
+            </div>
+          </section>
+        </div>
+      </details>
     </header>
     <main>
       <p id="status" class="status" role="status" aria-live="polite">
@@ -18,30 +37,6 @@
       </p>
       <h1 id="title"></h1>
       <div id="meta" class="meta"></div>
-      <a id="source" class="back-link" hidden rel="noreferrer" target="_blank"
-        >Open original article</a
-      >
-      <p class="quiet" id="copy-note" hidden>
-        This is a shared copy. Check the original when accuracy matters.
-      </p>
-      <section id="ratings" hidden>
-        <p id="rating-summary" class="quiet"></p>
-        <div class="actions">
-          <button id="helpful" class="small-button">Helpful copy</button
-          ><button id="incomplete" class="small-button">Incomplete copy</button
-          ><button id="refresh-ratings" class="small-button">
-            Check ratings
-          </button>
-        </div>
-        <details>
-          <summary>Rating privacy</summary>
-          <p class="quiet">
-            Ratings are public. A public identifier connects your ratings and
-            shares.
-          </p>
-        </details>
-      </section>
-      <hr hidden id="divider" />
       <article id="article" class="article"></article>
     </main>
     <script type="module" src="/src/reader.js"></script>

@@ -37,7 +37,13 @@ function record(action) {
 async function activate(page, selector) {
   lastPage = page;
   record(`Keyboard Enter: ${selector}`);
-  await page.locator(selector).focus();
+  const target = page.locator(selector).first();
+  const closed = target.locator('xpath=ancestor::details[not(@open)]');
+  while (!(await target.isVisible()) && await closed.count()) {
+    await closed.first().locator(':scope > summary').focus();
+    await page.keyboard.press('Enter');
+  }
+  await target.focus();
   await page.keyboard.press('Enter');
 }
 async function call(action, fields = {}, page = popup) {
@@ -114,18 +120,17 @@ async function reset() {
   await popup.reload();
   await popup.locator('#app').waitFor({ state: 'visible' });
 }
-async function capture(path = '/article') {
+async function capture(path = '/article', action = 'previewMenu') {
   record(`Open local original article: ${path}`);
   const source = await context.newPage();
   await source.goto(origin + path);
   await source.bringToFront();
   await popup.reload();
-  await activate(popup, '[data-view="cache"]');
   await popup.waitForFunction(
     () => !document.querySelector('#capture').disabled
   );
   const opened = context.waitForEvent('page');
-  await activate(popup, '#capture');
+  await activate(popup, `#${action}`);
   const review = await opened;
   await review.waitForLoadState();
   await review.waitForFunction(
@@ -133,6 +138,10 @@ async function capture(path = '/article') {
   );
   lastPage = review;
   return review;
+}
+async function waitForReader(page) {
+  await page.waitForURL('**/reader.html?*');
+  await page.waitForFunction(() => document.querySelector('#article')?.textContent.length > 0);
 }
 async function readSaved() {
   await popup.reload();
@@ -142,43 +151,41 @@ async function readSaved() {
   await activate(popup, '#library-list .item-main');
   const reading = await opened;
   await reading.waitForLoadState();
-  await reading.locator('#source').waitFor({ state: 'visible' });
+  await reading.waitForFunction(() => document.querySelector('#article')?.textContent.length > 0);
   lastPage = reading;
   return reading;
 }
 const scenarios = [
   {
-    name: 'First launch is quiet and explains public sharing',
+    name: 'First launch shows saved articles without contacting public services',
     reset: false,
     async run() {
-      await popup.locator('#welcome').waitFor({ state: 'visible' });
-      assert.equal(await popup.locator('#welcome').isVisible(), true);
-      assert.match(await popup.locator('#welcome').textContent(), /public/);
-      assert.equal(await popup.locator('#app').isVisible(), false);
-      assert.deepEqual(
-        publicRequests,
-        [],
-        'First launch does not contact a public provider'
-      );
-      return ['Consent precedes archive actions', 'No automatic publication'];
+      await popup.locator('#library-list .empty').waitFor();
+      assert.equal(await popup.locator('#app').isVisible(), true);
+      assert.equal(await popup.locator('#welcome,#accept').count(), 0);
+      assert.equal(await popup.locator('#options').getAttribute('open'), null);
+      assert.match(await popup.locator('#options').textContent(), /public/);
+      assert.deepEqual(publicRequests, []);
+      return ['Local saved list opens directly', 'Options closed', 'No automatic network publication or queries'];
     }
   },
   {
-    name: 'Keyboard consent opens the three simple sections',
+    name: 'Keyboard navigation loads Popular only when selected',
     reset: false,
     async run() {
-      await popup.locator('#welcome summary').focus();
+      assert.equal(await popup.locator('[data-view]').count(), 2);
+      await activate(popup, '#options > summary');
+      assert.equal(await popup.locator('#options').getAttribute('open'), '');
+      await activate(popup, '#options > summary');
+      await activate(popup, '[data-view="library"]');
+      await context.setOffline(true);
       await popup.keyboard.press('Tab');
-      assert.equal(
-        await popup.evaluate(() => document.activeElement.id),
-        'accept'
-      );
+      assert.equal(await popup.evaluate(() => document.activeElement.dataset.view), 'read');
       await popup.keyboard.press('Enter');
-      await popup.locator('#app').waitFor({ state: 'visible' });
-      assert.equal(await popup.locator('[data-view]').count(), 3);
-      for (const view of ['cache', 'library', 'read'])
-        await activate(popup, `[data-view="${view}"]`);
-      return ['Popular, Save, Saved are keyboard reachable'];
+      await popup.waitForFunction(() => document.querySelector('#status').classList.contains('error'));
+      await activate(popup, '[data-view="library"]');
+      await context.setOffline(false);
+      return ['Saved and Popular are keyboard reachable', 'Popular selection starts the bounded search without a second button'];
     }
   },
   {
@@ -188,8 +195,7 @@ const scenarios = [
       await page.goto('about:blank');
       await page.bringToFront();
       await popup.reload();
-      await activate(popup, '[data-view="cache"]');
-      assert.equal(await popup.locator('#capture').isDisabled(), true);
+          assert.equal(await popup.locator('#capture').isDisabled(), true);
       return ['Invalid source has a clear disabled action'];
     }
   },
@@ -213,15 +219,17 @@ const scenarios = [
   {
     name: 'Private save and offline reading retain the image',
     async run() {
-      const review = await capture();
-      await activate(review, '#save');
-      await review.waitForFunction(
-        () => document.querySelector('#review-controls').hidden
-      );
-      assert.equal(
-        await review.locator('#status').textContent(),
-        'Saved on this device.'
-      );
+      const source = await context.newPage();
+      await source.goto(origin + '/article');
+      await source.bringToFront();
+      await popup.reload();
+      await popup.waitForFunction(() => !document.querySelector('#capture').disabled);
+      const opened = context.waitForEvent('page');
+      await activate(popup, '#capture');
+      const savedReader = await opened;
+      await waitForReader(savedReader);
+      assert.equal(await savedReader.locator('#review-controls').count(), 0, 'One Save action opens the reader without a preview step');
+      assert.equal(await savedReader.locator('#copy-label').textContent(), 'Private copy');
       await context.setOffline(true);
       const reading = await readSaved();
       await reading.waitForFunction(
@@ -242,7 +250,7 @@ const scenarios = [
   {
     name: 'Image overflow blocks saves until explicit text-only choice',
     async run() {
-      const review = await capture('/overflow');
+      const review = await capture('/overflow', 'capture');
       assert.equal(await review.locator('#save').isDisabled(), true);
       assert.equal(await review.locator('#share').isDisabled(), true);
       assert.match(
@@ -258,9 +266,7 @@ const scenarios = [
       await review.keyboard.press('Space');
       assert.equal(await review.locator('#article img').count(), 0);
       await activate(review, '#save');
-      await review.waitForFunction(
-        () => document.querySelector('#review-controls').hidden
-      );
+      await waitForReader(review);
       const reading = await readSaved();
       assert.equal(await reading.locator('#article img').count(), 0);
       assert.ok(
@@ -308,8 +314,7 @@ const scenarios = [
       await source.goto(origin + '/empty');
       await source.bringToFront();
       await popup.reload();
-      await activate(popup, '[data-view="cache"]');
-      await popup.waitForFunction(
+          await popup.waitForFunction(
         () => !document.querySelector('#capture').disabled
       );
       await activate(popup, '#capture');
@@ -366,9 +371,7 @@ const scenarios = [
         undefined
       );
       await activate(page, '#save');
-      await page.waitForFunction(
-        () => document.querySelector('#review-controls').hidden
-      );
+      await waitForReader(page);
       const reader = await readSaved();
       assert.equal(
         await reader
@@ -405,9 +408,7 @@ const scenarios = [
         '0'
       );
       await activate(page, '#save');
-      await page.waitForFunction(
-        () => document.querySelector('#review-controls').hidden
-      );
+      await waitForReader(page);
       return [
         'No document overflow at360px',
         'Table and save remain keyboard accessible'
@@ -442,6 +443,7 @@ const scenarios = [
       await context.setOffline(true);
       await popup.reload();
       await activate(popup, '[data-view="library"]');
+      await activate(popup, '#manage');
       await popup.getByRole('button', { name: 'Retry sharing' }).waitFor();
       await activate(popup, '#library-list .item-actions button:first-child');
       await popup.waitForFunction(() =>
@@ -584,6 +586,7 @@ const scenarios = [
       await seededSave({ title: 'Original clear fixture' });
       await activate(popup, '[data-view="library"]');
       await popup.locator('#library-list .item').first().waitFor();
+      await activate(popup, '#manage');
       await popup
         .getByRole('button', { name: /^Remove / })
         .first()
@@ -795,8 +798,6 @@ if (process.env.RUN_TEST_DRIVES !== '1') {
     await popup.goto(`${base}/popup.html`);
     await mkdir('artifacts/test-drives', { recursive: true });
     if (recheck.length) {
-      await popup.locator('#accept').waitFor({ state: 'visible' });
-      await activate(popup, '#accept');
       await popup.locator('#app').waitFor({ state: 'visible' });
     }
     for (let index = 0; index < scenarios.length; index++) {

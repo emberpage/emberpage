@@ -68,7 +68,6 @@ try {
   });
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${id}/popup.html`);
-  await popup.locator('#accept').click();
   await popup.locator('#app').waitFor({ state: 'visible' });
   const unauthorizedPixels = await popup.evaluate(() => chrome.runtime.sendMessage({ target: 'background', action: 'CAPTURE_IMAGE_PIXELS', captureToken: 'not-authorized' }));
   assert.equal(unauthorizedPixels.ok, false, 'Screenshot pixels must not be accessible outside an authorized article capture.');
@@ -89,9 +88,9 @@ try {
   assert.ok(imageRequests.some(request => request.path === '/allowed.png' && request.cookie?.includes('image-smoke-secret')));
   await popup.reload();
   await popup.waitForFunction(() => !document.querySelector('#capture').disabled);
-  await popup.locator('[data-view="cache"]').click();
+  await popup.locator('#options > summary').click();
   const reviewPromise = context.waitForEvent('page');
-  await popup.locator('#capture').click();
+  await popup.locator('#previewMenu').click();
   const review = await reviewPromise;
   await review.waitForLoadState();
   await review.waitForFunction(() => !document.querySelector('#save').disabled);
@@ -117,8 +116,9 @@ try {
     'CORS fallback must use an anonymous request without the page cookie or referrer.');
   assert.equal(await worker.evaluate(() => chrome.offscreen.hasDocument()), false, 'Private image capture must not start networking.');
   await review.locator('#save').click();
-  await review.waitForFunction(() => document.querySelector('#review-controls').hidden);
-  assert.equal(await review.locator('#status').textContent(), 'Saved on this device.');
+  await review.waitForURL('**/reader.html?*');
+  await review.waitForFunction(() => document.querySelector('#article')?.textContent.length > 0);
+  assert.equal(await review.locator('#copy-label').textContent(), 'Private copy');
   await popup.reload();
   await popup.locator('[data-view="library"]').click();
   await popup.locator('#library-list .item-main').waitFor();
@@ -126,7 +126,7 @@ try {
   const readerPromise = context.waitForEvent('page');
   await popup.locator('#library-list .item-main').click();
   const reader = await readerPromise;
-  await reader.waitForLoadState(); await reader.locator('#source').waitFor({ state: 'visible' });
+  await reader.waitForLoadState(); await reader.waitForFunction(() => document.querySelector('#article')?.textContent.length > 0);
   assert.equal(await reader.locator('#article img').count(), 4);
   assert.equal(await reader.locator('#article img[src^="http"]').count(), 0);
   await reader.waitForFunction(() => document.querySelector('#article img')?.naturalWidth > 0);
