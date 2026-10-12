@@ -15,11 +15,11 @@ pnpm smoke:aggregator
 pnpm test:drive
 pnpm zip
 
-# Example for package version 0.1.3:
+# Example for package version 0.1.4:
 git switch main
 git pull --ff-only
-git tag v0.1.3
-git push origin v0.1.3
+git tag v0.1.4
+git push origin v0.1.4
 ```
 
 Local files are in `.output/`: the unpacked extension and versioned Chrome ZIP. GitHub Actions repeats checks, verifies the manifest, and publishes the ZIP with SHA-256 checksums when a matching tag passes. A failed check prevents publication.

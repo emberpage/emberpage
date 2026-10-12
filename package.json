@@ -1,9 +1,9 @@
 {
   "name": "emberpage",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
-  "description": "Save articles privately, share them publicly, and read shared copies.",
+  "description": "Preserve readable article snapshots for when links break or pages disappear.",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",

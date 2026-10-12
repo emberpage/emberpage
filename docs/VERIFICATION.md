@@ -1,6 +1,6 @@
 # What has been tested
 
-## Current checks: 0.1.3
+## Current checks: 0.1.4
 
 On 2026-10-11, the local build passed strict TypeScript, **84 automated tests**, the production build/manifest check, extension and dashboard browser smoke tests, and **20 sequential browser scenarios**. GitHub CI and ZIP checksums are available with each [release](https://github.com/emberpage/emberpage/releases).
 

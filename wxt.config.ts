@@ -7,7 +7,7 @@ export default defineConfig({
   manifest: {
     name: "Ember Page",
     description:
-      "Save articles to read later, share them publicly, and browse copies shared by others.",
+      "Keep readable article snapshots for when links break or pages disappear. Save privately by default.",
     minimum_chrome_version: "116",
     permissions: ["activeTab", "scripting", "storage", "offscreen"],
     action: {

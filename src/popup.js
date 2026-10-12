@@ -16,7 +16,7 @@ async function init() {
     : 'Choose a web page';
   $('#page-title').textContent = supported
     ? currentTab.title || currentTab.url
-    : 'Open an article to start.';
+    : 'Open an article to preserve it.';
   $('#capture').disabled = !supported;
   $('#previewMenu').disabled = !supported;
   renderCatalog(catalog);
@@ -64,7 +64,7 @@ function renderCatalog(entries) {
   const container = $('#catalog-list');
   container.replaceChildren();
   if (!entries.length)
-    empty(container, 'No shared articles found yet.');
+    empty(container, 'No community archives found yet.');
   for (const entry of entries) {
     const helpful = entry.rating?.upvotes || 0;
     container.append(
@@ -85,7 +85,7 @@ async function browse(button) {
     status('Finding articles…');
     const result = await send('CATALOG');
     entries = result.entries;
-    status(result.warning || (entries.length ? '' : 'No readable copies found. Preview an article to share it.'));
+    status(result.warning || (entries.length ? '' : 'No readable archives found right now. Try again later.'));
   });
   if (entries) renderCatalog(entries);
 }
@@ -111,14 +111,14 @@ async function library() {
   const container = $('#library-list');
   container.replaceChildren();
   if (!records.length)
-    empty(container, 'Save an article to keep your first copy.');
+    empty(container, 'Save an article to start your reading archive.');
   for (const record of records) {
     const detail = record.pendingShare
       ? 'Sharing unfinished'
       : record.shared
         ? record.source === 'reader'
-          ? 'Shared copy'
-          : 'Shared publicly'
+          ? 'Community archive'
+          : 'Public archive'
         : 'Saved on this device';
     const row = item(record.title, `${hostname(record.url)} · ${detail}`, () =>
       send('OPEN_COPY', { id: record.contentHash })
