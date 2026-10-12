@@ -69,7 +69,7 @@ try {
   await popup.reload();
   await popup.locator('#app').waitFor({ state: 'visible' });
   await popup.waitForFunction(() => !document.querySelector('#capture').disabled);
-  assert.equal(await worker.evaluate(() => chrome.offscreen.hasDocument()), false, 'Opening Popular and Save must not start a network session.');
+  assert.equal(await worker.evaluate(() => chrome.offscreen.hasDocument()), false, 'Opening the archive must not start a network session.');
   const reviewPromise = context.waitForEvent('page');
   await keyboardActivate(popup, '#previewMenu');
   const review = await reviewPromise;
@@ -118,7 +118,7 @@ try {
   await popup.locator('#library-list').getByRole('button', { name: /^Remove / }).click();
   await popup.locator('#library-list .empty').waitFor();
 
-  console.log('PASS: keyboard direct preview/Saved/Popular, private saving, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
+  console.log('PASS: keyboard direct preview/Archive/Community, private saving, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
 } finally {
   await context?.close();
   await new Promise(resolve => server.close(resolve));

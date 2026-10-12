@@ -1,12 +1,12 @@
 # How Ember Page works
 
-Ember Page saves readable copies of articles. Saving stays private unless the reader chooses to share.
+Ember Page preserves readable article snapshots for when links break or pages disappear. Saving is private by default; public sharing is optional and requires permission to redistribute the article.
 
 ## Extension
 
 Save article extracts the selected page, saves a private copy, and opens the reader. Options offers a preview before saving; its More options includes public sharing, text-only mode, and discard. Oversized images open the preview for an explicit text-only choice. Sharing saves a local copy, uploads the article file, then publishes its title and link. A failed share keeps the local copy and offers an explicit retry.
 
-Selecting Popular starts a bounded search and shows only downloaded articles that pass integrity, safety, image and readability checks. Opening an article and rating it are separate actions. There is no automatic sharing, voting or background serving.
+Selecting Community starts a bounded search and shows only downloaded articles that pass integrity, safety, image and readability checks. Opening an article and rating it are separate actions. There is no automatic sharing, voting or background serving.
 
 ## Two services
 

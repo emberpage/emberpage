@@ -460,6 +460,7 @@ hr {
 }
 
 .capture-section { margin-bottom: 28px; }
+.archive-purpose { margin: 0 0 16px; }
 .section-title h2, #read-view > h2 {
   margin: 0;
   font-size: 16px;

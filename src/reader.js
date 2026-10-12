@@ -41,7 +41,7 @@ send('READ', { id })
     document.querySelector('#meta').textContent = [
       article.byline,
       hostname(article.url),
-      `Saved ${new Date(article.capturedAt).toLocaleString()}`
+      `Archived ${new Date(article.capturedAt).toLocaleString()}`
     ]
       .filter(Boolean)
       .join(' • ');

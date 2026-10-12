@@ -157,7 +157,7 @@ async function readSaved() {
 }
 const scenarios = [
   {
-    name: 'First launch shows saved articles without contacting public services',
+    name: 'First launch opens the archive without contacting public services',
     reset: false,
     async run() {
       await popup.locator('#library-list .empty').waitFor();
@@ -170,7 +170,7 @@ const scenarios = [
     }
   },
   {
-    name: 'Keyboard navigation loads Popular only when selected',
+    name: 'Keyboard navigation loads Community only when selected',
     reset: false,
     async run() {
       assert.equal(await popup.locator('[data-view]').count(), 2);
@@ -185,7 +185,7 @@ const scenarios = [
       await popup.waitForFunction(() => document.querySelector('#status').classList.contains('error'));
       await activate(popup, '[data-view="library"]');
       await context.setOffline(false);
-      return ['Saved and Popular are keyboard reachable', 'Popular selection starts the bounded search without a second button'];
+      return ['Archive and Community are keyboard reachable', 'Community selection starts the bounded search without a second button'];
     }
   },
   {
@@ -509,7 +509,7 @@ const scenarios = [
     }
   },
   {
-    name: 'Offline Popular reports failure and restores its action',
+    name: 'Offline Community reports failure and restores its action',
     async run() {
       await context.setOffline(true);
       await activate(popup, '#browse');
