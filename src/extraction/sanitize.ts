@@ -1,6 +1,30 @@
 import { Schema } from 'effect';
 import { normalizeUrl } from '../domain/url.ts';
 
+/** Serialize sanitized article structure without joining adjacent blocks. */
+export function articleText(root: Element): string {
+  const blocks = new Set(['article', 'section', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'blockquote', 'ul', 'ol', 'li', 'dl', 'dt', 'dd', 'figure', 'figcaption', 'pre', 'table', 'tr', 'hr']);
+  const parts: string[] = [];
+  function visit(node: Node, preformatted = false): void {
+    if (node.nodeType === 3) {
+      const text = node.nodeValue || '';
+      parts.push(preformatted ? text : text.replace(/\s+/g, ' '));
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    const tag = (node as Element).localName;
+    if (tag === 'br') {parts.push('\n'); return;}
+    const block = blocks.has(tag);
+    if (block) parts.push('\n\n');
+    for (const child of node.childNodes) visit(child, preformatted || tag === 'pre');
+    if (tag === 'td' || tag === 'th') parts.push('\t');
+    if (block) parts.push('\n\n');
+  }
+  visit(root);
+  return parts.join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export const MAX_IMAGES = 10;
 export const MAX_TOTAL_IMAGE_URI_LENGTH = 1024 * 1024;
 export const MAX_IMAGE_DIMENSION = 1600;

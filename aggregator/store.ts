@@ -1,3 +1,5 @@
+import { isSnapshotRoutes } from '../src/domain/routes.ts';
+import { isSnapshotCid } from '../src/domain/cid.ts';
 import { Predicate, Schema } from 'effect';
 import type { SQLOutputValue, StatementSync } from 'node:sqlite';
 import type { JournalEvent, RefreshSummary } from './types.ts';
@@ -43,7 +45,7 @@ import { mkdirSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { normalizeUrl } from '../src/domain/url.ts';
 import { hashUrl } from '../src/domain/article.ts';
-import { PROVIDER, DISCOVERY_WINDOW_MS } from '../src/directory/nostr.ts';
+import { DISCOVERY_WINDOW_MS } from '../src/directory/nostr.ts';
 const byteSize: (value: unknown) => number = (value: unknown) =>
   new TextEncoder().encode(JSON.stringify(value)).length;
 const TrendSchema = Schema.Struct({
@@ -70,7 +72,9 @@ const counts: Set<string> = new Set([
   'count',
   'expired',
   'evicted',
-  'queries'
+  'queries',
+  'relaysSucceeded',
+  'relaysFailed'
 ]);
 const codes: Set<string> = new Set([
   'invalid',
@@ -203,106 +207,18 @@ export class AggregatorStore {
     this.db
       .prepare(`DELETE FROM ${table} WHERE createdAt < ?`)
       .run(this.now() - ttl);
-    const records: (
-        | {
-            readonly id: string;
-            readonly pubkey: string;
-            readonly createdAt: number;
-            readonly url: string;
-            readonly urlHash: string;
-            readonly contentHash: string;
-            readonly blobHash: string;
-            readonly size: number;
-            readonly title: string;
-            readonly byline: string;
-            readonly capturedAt: number;
-            readonly provider: string;
-          }
-        | {
-            readonly id: string;
-            readonly pubkey: string;
-            readonly createdAt: number;
-            readonly urlHash: string;
-            readonly contentHash: string;
-            readonly value: 1 | -1;
-          }
-        | StoredJournal
-      )[] = this.records(table),
-      keep: Set<string> = new Set(
-        bounded(records, maxRecords, maxBytes).map(
-          (
-            record:
-              | {
-                  readonly id: string;
-                  readonly pubkey: string;
-                  readonly createdAt: number;
-                  readonly url: string;
-                  readonly urlHash: string;
-                  readonly contentHash: string;
-                  readonly blobHash: string;
-                  readonly size: number;
-                  readonly title: string;
-                  readonly byline: string;
-                  readonly capturedAt: number;
-                  readonly provider: string;
-                }
-              | {
-                  readonly id: string;
-                  readonly pubkey: string;
-                  readonly createdAt: number;
-                  readonly urlHash: string;
-                  readonly contentHash: string;
-                  readonly value: 1 | -1;
-                }
-              | StoredJournal
-          ) => record.id
-        )
-      );
+    const records = this.records(table);
+    const eligible = table === 'directory' ? records.filter(record => Predicate.hasProperty(record,'cid') && isSnapshotCid(record.cid) && Predicate.hasProperty(record,'routes') && isSnapshotRoutes(record.routes)) : records;
+    const keep = new Set(bounded(eligible,maxRecords,maxBytes).map(record => record.id));
     const remove: StatementSync = this.db.prepare(
       `DELETE FROM ${table} WHERE id=?`
     );
     for (const record of records)
       if (!keep.has(record.id)) remove.run(record.id);
   }
-  async commitMetadata(
-    listings: readonly {
-      readonly id: string;
-      readonly pubkey: string;
-      readonly createdAt: number;
-      readonly url: string;
-      readonly urlHash: string;
-      readonly contentHash: string;
-      readonly blobHash: string;
-      readonly size: number;
-      readonly title: string;
-      readonly byline: string;
-      readonly capturedAt: number;
-      readonly provider: string;
-    }[],
-    votes: readonly {
-      readonly id: string;
-      readonly pubkey: string;
-      readonly createdAt: number;
-      readonly urlHash: string;
-      readonly contentHash: string;
-      readonly value: 1 | -1;
-    }[]
-  ) {
+  async commitMetadata(listings: readonly Listing[], votes: readonly Rating[]) {
     const now: number = this.now();
-    const accepted: {
-      readonly id: string;
-      readonly pubkey: string;
-      readonly createdAt: number;
-      readonly url: string;
-      readonly urlHash: string;
-      readonly contentHash: string;
-      readonly blobHash: string;
-      readonly size: number;
-      readonly title: string;
-      readonly byline: string;
-      readonly capturedAt: number;
-      readonly provider: string;
-    }[] = [];
+    const accepted: Listing[] = [];
     for (const value of listings.slice(0, 1000)) {
       try {
         if (
@@ -329,7 +245,7 @@ export class AggregatorStore {
           !Number.isSafeInteger(value.createdAt) ||
           value.createdAt < now - DISCOVERY_WINDOW_MS ||
           value.createdAt > now + 60000 ||
-          value.provider !== PROVIDER
+          !isSnapshotCid(value.cid) || !isSnapshotRoutes(value.routes)
         )
           continue;
         accepted.push({
@@ -344,30 +260,17 @@ export class AggregatorStore {
           byline: value.byline,
           capturedAt: value.capturedAt,
           createdAt: value.createdAt,
-          provider: value.provider
+          cid: value.cid,
+          routes: [...value.routes]
         });
       } catch {
         /* Reject malformed normalized metadata at the persistence boundary. */
       }
     }
-    const acceptedVotes: {
-      id: string;
-      pubkey: string;
-      urlHash: string;
-      contentHash: string;
-      createdAt: number;
-      value: 1 | -1;
-    }[] = votes
+    const acceptedVotes: Rating[] = votes
       .slice(0, 5000)
       .filter(
-        (value: {
-          readonly id: string;
-          readonly pubkey: string;
-          readonly createdAt: number;
-          readonly urlHash: string;
-          readonly contentHash: string;
-          readonly value: 1 | -1;
-        }) =>
+        (value) =>
           [value.id, value.pubkey, value.urlHash, value.contentHash].every(
             (hash: string) => HASH.test(hash)
           ) &&
@@ -377,14 +280,7 @@ export class AggregatorStore {
           value.createdAt <= now + 60000
       )
       .map(
-        (value: {
-          readonly id: string;
-          readonly pubkey: string;
-          readonly createdAt: number;
-          readonly urlHash: string;
-          readonly contentHash: string;
-          readonly value: 1 | -1;
-        }) => ({
+        (value) => ({
           id: value.id,
           pubkey: value.pubkey,
           urlHash: value.urlHash,
@@ -394,36 +290,10 @@ export class AggregatorStore {
         })
       );
     return this.transaction(() => {
-      const batches: [
-        keyof TableRecords,
-        (
-          | {
-              readonly id: string;
-              readonly pubkey: string;
-              readonly createdAt: number;
-              readonly url: string;
-              readonly urlHash: string;
-              readonly contentHash: string;
-              readonly blobHash: string;
-              readonly size: number;
-              readonly title: string;
-              readonly byline: string;
-              readonly capturedAt: number;
-              readonly provider: string;
-            }
-          | {
-              readonly id: string;
-              readonly pubkey: string;
-              readonly createdAt: number;
-              readonly urlHash: string;
-              readonly contentHash: string;
-              readonly value: 1 | -1;
-            }
-        )[]
-      ][] = [
+      const batches: [keyof TableRecords, (Listing | Rating)[]][] = [
         ['directory', accepted],
         ['ratings', acceptedVotes]
-      ] as Array<[keyof TableRecords, Array<Listing | Rating>]>;
+      ];
       for (const [table, records] of batches) {
         const insert: StatementSync = this.db.prepare(
           `INSERT INTO ${table} VALUES(?,?,?) ON CONFLICT(id) DO NOTHING`
@@ -456,7 +326,7 @@ export class AggregatorStore {
       this.maxArticles,
       this.maxBytes
     );
-    return this.records('directory');
+    return this.records('directory').filter(record => isSnapshotCid(record.cid) && isSnapshotRoutes(record.routes));
   }
   listVotes() {
     this.prune(

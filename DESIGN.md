@@ -65,7 +65,7 @@ The popup is 380px wide. Article pages use an 826px container with 48px horizont
 
 ## Elevation & Depth
 
-Dividers and muted surfaces provide grouping. Selected popup tabs have a subtle shadow. Options use an opaque, bordered panel. There is no decorative motion.
+Dividers and muted surfaces provide grouping. Options use an opaque, bordered panel. There is no decorative motion.
 
 ## Shapes
 
@@ -73,7 +73,7 @@ Controls use gently rounded corners. The shared radius is 0.5rem; dashboard cont
 
 ## Components
 
-Primary buttons carry the main action. Secondary and text buttons support optional actions. Search fields use a thin input border. Archive and Community form the popup navigation; Tools contains dashboard views and diagnostics. Keyboard focus uses a visible two-pixel ring with a three-pixel offset.
+Primary buttons carry the main action. Secondary and text buttons support optional actions. Search fields use a thin input border. The popup offers Save article and Find saved copies for the current page; Options contains full archive management. Saved readers expose Share on IPFS / Keep available with a public-copy notice; shared readers also offer Helpful copy. Contribution runs inside the browser. Tools contains dashboard views and diagnostics. Keyboard focus uses a visible two-pixel ring with a three-pixel offset.
 
 ## Do's and Don'ts
 

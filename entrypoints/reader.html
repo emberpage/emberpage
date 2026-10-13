@@ -17,13 +17,11 @@
           <a id="source" class="back-link" hidden rel="noreferrer" target="_blank">Open original article</a>
           <p class="quiet" id="copy-note" hidden>
             This is an archived snapshot. Check the original for updates and accuracy.
-            Public archives depend on their hosting service.
+            Availability depends on connected peers.
           </p>
-          <section id="ratings" hidden>
-            <p id="rating-summary" class="quiet"></p>
+          <section id="rating-options" hidden>
             <p class="quiet">Ratings are public. A public identifier connects your ratings and shares.</p>
             <div class="actions">
-              <button id="helpful" class="small-button">Helpful copy</button>
               <button id="incomplete" class="small-button">Incomplete copy</button>
               <button id="refresh-ratings" class="small-button">Check ratings</button>
             </div>
@@ -37,7 +35,27 @@
       </p>
       <h1 id="title"></h1>
       <div id="meta" class="meta"></div>
+      <section id="ipfs-preservation" hidden aria-label="Preserve this snapshot">
+        <div class="copy-support">
+          <div>
+            <p class="support-title">Help keep this copy available</p>
+            <p class="quiet">Makes this copy, title and link public. Your browser contributes while running. IPFS peers may see your IP address.</p>
+          </div>
+          <button id="preserve-ipfs" class="secondary" disabled>Share on IPFS</button>
+        </div>
+        <p id="ipfs-status" class="status" role="status" aria-live="polite"></p>
+        <p id="ipfs-result" class="meta" hidden>Snapshot file: <a id="ipfs-link" rel="noreferrer"></a></p>
+        <button id="copy-ipfs" class="text-button" hidden>Copy IPFS address</button>
+      </section>
       <article id="article" class="article typeset typeset-article"></article>
+      <footer id="ratings" class="copy-support" hidden aria-label="Support this copy">
+        <div>
+          <p class="support-title">Was this copy useful?</p>
+          <p id="rating-summary" class="quiet"></p>
+          <p class="quiet">Your public vote helps others find it.</p>
+        </div>
+        <button id="helpful" class="secondary">Helpful copy</button>
+      </footer>
     </main>
     <script type="module" src="/src/pages/reader.ts"></script>
   </body>

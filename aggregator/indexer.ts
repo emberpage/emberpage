@@ -5,6 +5,7 @@ import {
   ListingSchema,
   RatingSchema,
   DiagnosticsSchema,
+  type QueryDiagnostics,
   type MetadataDirectory,
   type RefreshSummary,
 } from "./types.ts";
@@ -141,6 +142,7 @@ export class MetadataIndexer {
   nextRunAt: number | null = null;
   connected = false;
   error: "timeout" | "network" | null = null;
+  private relayOutcomes: NonNullable<QueryDiagnostics["relays"]> = [];
   private schedulerFiber: Fiber.Fiber<void, never> | null = null;
   private refreshFiber: Fiber.Fiber<RefreshSummary, IndexingError> | null =
     null;
@@ -170,11 +172,11 @@ export class MetadataIndexer {
     schema: Schema.Codec<readonly A[]>,
   ) {
     const startedAt = yield* this.timestamp;
-    const result = yield* Effect.tryPromise({
+    const { records, diagnostics } = yield* Effect.tryPromise({
       try: query,
       catch: failure,
     }).pipe(
-      Effect.flatMap(Schema.decodeUnknownEffect(schema)),
+      Effect.flatMap(Schema.decodeUnknownEffect(Schema.Struct({ records: schema, diagnostics: DiagnosticsSchema }))),
       Effect.mapError(failure),
       Effect.tapError((error) =>
         Effect.sync(() =>
@@ -188,26 +190,20 @@ export class MetadataIndexer {
         ),
       ),
     );
-    const diagnostics =
-      this.directory.lastQuery == null
-        ? null
-        : yield* Schema.decodeUnknownEffect(DiagnosticsSchema)(
-            this.directory.lastQuery,
-          ).pipe(Effect.mapError(failure));
+    const relays = diagnostics.relays ?? [];
+    const failedRelays = relays.filter(relay => relay.outcome === "failure").length;
     const finishedAt = yield* this.timestamp;
     yield* Effect.sync(() =>
       this.store.appendEvent({
         action,
         kind: "network",
-        outcome: "success",
+        outcome: failedRelays ? "partial" : "success",
         startedAt,
         durationMs: finishedAt - startedAt,
-        details: diagnostics
-          ? { ...diagnostics, entries: result.length }
-          : { accepted: result.length, entries: result.length },
+        details: { ...diagnostics, entries: records.length, relaysSucceeded: relays.length - failedRelays, relaysFailed: failedRelays },
       }),
     );
-    return { records: result, diagnostics };
+    return { records, diagnostics };
   });
   readonly refreshEffect = Effect.fn("MetadataIndexer.refresh")(function* (
     this: MetadataIndexer,
@@ -259,11 +255,11 @@ export class MetadataIndexer {
             catch: failure,
           }).pipe(Effect.uninterruptible);
           const rejected =
-            (listingQuery.diagnostics?.rejected ?? 0) +
-            (voteQuery.diagnostics?.rejected ?? 0);
+            listingQuery.diagnostics.rejected +
+            voteQuery.diagnostics.rejected;
           const duplicates =
-            (listingQuery.diagnostics?.duplicates ?? 0) +
-            (voteQuery.diagnostics?.duplicates ?? 0) +
+            listingQuery.diagnostics.duplicates +
+            voteQuery.diagnostics.duplicates +
             listings.length -
             unique.size;
           const finishedAt = yield* this.timestamp;
@@ -272,7 +268,7 @@ export class MetadataIndexer {
             finishedAt,
             durationMs: finishedAt - startedAt,
             outcome: "success",
-            discovered: listingQuery.diagnostics?.received ?? listings.length,
+            discovered: listingQuery.diagnostics.received,
             indexed: committed.articles,
             votes: voteQuery.records.length,
             accepted: listings.length + voteQuery.records.length,
@@ -301,6 +297,11 @@ export class MetadataIndexer {
               durationMs: summary.durationMs,
               details: { ...summary },
             });
+            const coverage = new Map<string, NonNullable<QueryDiagnostics["relays"]>[number]>();
+            for (const relay of [...(listingQuery.diagnostics.relays ?? []), ...(voteQuery.diagnostics.relays ?? [])]) {
+              if (coverage.get(relay.relay)?.outcome !== "failure") coverage.set(relay.relay, relay);
+            }
+            this.relayOutcomes = [...coverage.values()];
             this.connected = true;
             this.error = null;
           });
@@ -370,6 +371,7 @@ export class MetadataIndexer {
       connected: false,
       peers: 0,
       lastQuerySucceeded: this.connected,
+      relays: this.relayOutcomes,
       error: this.error,
       pending: Number(this.pending),
       indexing: this.indexing,

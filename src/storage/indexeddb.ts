@@ -1,6 +1,9 @@
 import { BoundaryError } from '../domain/errors.ts';
 import { Effect } from 'effect';
+import { isSnapshotRoutes } from '../domain/routes.ts';
+import { isSnapshotCid } from '../domain/cid.ts';
 type ArticleCopy = import('../domain/types.ts').ArticleCopy;
+type SavedCopySummary = import('../domain/types.ts').SavedCopySummary;
 type StoredArticle = Omit<ArticleCopy, 'article'> & {
   url: string;
   title: string;
@@ -11,9 +14,11 @@ type StoredArticle = Omit<ArticleCopy, 'article'> & {
   storedAt: number;
   lastAccessedAt: number;
   expandedSize?: number;
+  meshRetained?: boolean;
 };
 type ShareReceipt = import('../domain/types.ts').ShareReceipt;
 import { decodeArticle } from '../domain/article.ts';
+import { normalizeUrl } from '../domain/url.ts';
 const MAX_RECORDS = 100,
   MAX_VAULT_BYTES: number = 16 * 1024 * 1024;
 const encoder: TextEncoder = new TextEncoder(),
@@ -80,6 +85,17 @@ export class IndexedRecords<T> {
       })
     ));
   }
+  async get(key: IDBValidKey): Promise<T | null> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('records', 'readonly');
+      const request: IDBRequest<unknown> = tx.objectStore('records').get(key);
+      let result: T | null = null;
+      request.onsuccess = () => {result = request.result === undefined ? null : request.result as T;};
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = tx.onabort = () => reject(tx.error || new Error('Local storage failed.'));
+    });
+  }
   async update(
     change: ((records: T[]) => T[]) | undefined = (records: T[]) => records
   ) {
@@ -139,18 +155,21 @@ export class LocalVault {
   now: () => number;
   maxRecords: number;
   maxBytes: number;
+  readonly #retainedFiles: () => Promise<readonly string[]>;
   constructor({
     name = 'emberpage-writer-v1',
     indexedDB = globalThis.indexedDB,
     now = () => Date.now(),
     maxRecords = MAX_RECORDS,
-    maxBytes = MAX_VAULT_BYTES
+    maxBytes = MAX_VAULT_BYTES,
+    retainedFiles = () => Promise.resolve([])
   }: {
     name?: string | undefined;
     indexedDB?: IDBFactory | undefined;
     now?: (() => number) | undefined;
     maxRecords?: number | undefined;
     maxBytes?: number | undefined;
+    retainedFiles?: () => Promise<readonly string[]>;
   } = {}) {
     if (
       !Number.isSafeInteger(maxRecords) ||
@@ -167,20 +186,26 @@ export class LocalVault {
     this.now = now;
     this.maxRecords = maxRecords;
     this.maxBytes = maxBytes;
+    this.#retainedFiles = retainedFiles;
+  }
+  async #update(change: (records: StoredArticle[]) => StoredArticle[]) {
+    const retained = new Set(await this.#retainedFiles());
+    return this.store.update(records => change(records.map(record =>
+      retained.has(record.blobHash) ? {...record, meshRetained: true} : record)));
   }
   bounded(records: StoredArticle[]) {
     const ordered: StoredArticle[] = [...records].sort(
         (a: StoredArticle, b: StoredArticle) =>
-          Number(b.pendingShare) - Number(a.pendingShare) || lru(a, b)
+          Number(Boolean(b.pendingShare || b.meshRetained)) - Number(Boolean(a.pendingShare || a.meshRetained)) || lru(a, b)
       ),
       kept: StoredArticle[] = [];
     let bytes = 0, expanded = 0;
     for (const record of ordered) {
       const size: number = recordBytes(record);
       if (kept.length >= this.maxRecords || bytes + size > this.maxBytes || expanded + (record.expandedSize ?? record.bytes.length) > MAX_VAULT_BYTES) {
-        if (record.pendingShare)
+        if (record.pendingShare || record.meshRetained)
           throw new Error(
-            'The archive is full of pending shares. Existing copies were kept.'
+            'The archive is full of contributed copies or unfinished shares. Remove a copy in Manage to free space.'
           );
         continue;
       }
@@ -203,23 +228,17 @@ export class LocalVault {
       | undefined = {}
   ) {
     const decoded: ArticleCopy = await decodeArticle(copy.bytes, {
-      blobHash: copy.blobHash,
+      expected: copy,
       now: this.now()
     });
-    if (
-      decoded.contentHash !== copy.contentHash ||
-      decoded.urlHash !== copy.urlHash ||
-      decoded.size !== copy.size
-    )
-      throw new Error('Archive identity does not match file.');
     let saved: StoredArticle | undefined;
-    await this.store.update((records: StoredArticle[]) => {
+    await this.#update((records: StoredArticle[]) => {
       const previous: StoredArticle | undefined = records.find(
         (record: StoredArticle) => record.contentHash === copy.contentHash
       );
-      if (previous?.pendingShare && previous.blobHash !== copy.blobHash)
+      if ((previous?.pendingShare || previous?.meshRetained) && previous.blobHash !== copy.blobHash)
         throw new Error(
-          'Finish or discard the pending share before replacing this file.'
+          'Remove the contributed copy or finish the pending share before replacing this file.'
         );
       saved = {
         expandedSize: encoder.encode(JSON.stringify(decoded.article)).byteLength,
@@ -234,6 +253,7 @@ export class LocalVault {
         listedAt: copy.listedAt ?? decoded.article.capturedAt,
         shared: shared || previous?.shared === true,
         pendingShare: pendingShare || previous?.pendingShare === true,
+        ...(previous?.meshRetained ? {meshRetained: true} : {}),
         storedAt: previous?.storedAt ?? this.now(),
         lastAccessedAt: Math.max(
           this.now(),
@@ -256,44 +276,43 @@ export class LocalVault {
     return { ...saved, article: decoded.article };
   }
   async getRecord(contentHash: string) {
-    const state: {
-      record: StoredArticle | null;
-    } = { record: null };
-    await this.store.update((records: StoredArticle[]) =>
+    const found = await this.store.get(contentHash);
+    if (!found) return null;
+    const decoded = await decodeArticle(found.bytes, {expected: found, now: this.now()});
+    const retained = await this.#update((records: StoredArticle[]) =>
       this.bounded(
         records.map((record: StoredArticle) => {
           if (record.contentHash !== contentHash) return record;
-          state.record = {
+          if (record.blobHash !== found.blobHash)
+            throw new Error('This saved copy changed. Open it again.');
+          return {
             ...record,
             lastAccessedAt: Math.max(
               this.now(),
               ...records.map((item: StoredArticle) => item.lastAccessedAt + 1)
             )
           };
-          return state.record;
         })
       )
     );
-    const found: StoredArticle | null = state.record;
-    return found
-      ? {
-          ...found,
-          article: (
-            await decodeArticle(found.bytes, {
-              blobHash: found.blobHash,
-              now: this.now()
-            })
-          ).article
-        }
-      : null;
+    const saved = retained.find(record => record.contentHash === contentHash);
+    return saved ? {...saved, article: decoded.article} : null;
   }
-  async listRecords() {
-    const records: StoredArticle[] = await this.store.update(
+  async #records(rawUrl?: string) {
+    const url = rawUrl === undefined ? undefined : normalizeUrl(rawUrl);
+    const records: StoredArticle[] = await this.#update(
       (records: StoredArticle[]) => this.bounded(records)
     );
+    return records.filter(record => url === undefined || record.url === url);
+  }
+  async listSummaries(rawUrl?: string): Promise<SavedCopySummary[]> {
+    return (await this.#records(rawUrl)).map(({contentHash, blobHash, url, title, capturedAt, shared, pendingShare, meshRetained}) =>
+      ({contentHash, blobHash, url, title, capturedAt, shared, pendingShare, ...(meshRetained ? {meshRetained} : {})}));
+  }
+  async listRecords(rawUrl?: string) {
     const result: (StoredArticle & {article: ArticleCopy['article']})[] = [];
-    for (const record of records) {
-      const decoded = await decodeArticle(record.bytes, {blobHash: record.blobHash, now: this.now()});
+    for (const record of await this.#records(rawUrl)) {
+      const decoded = await decodeArticle(record.bytes, {expected: record, now: this.now()});
       result.push({...record, article: decoded.article});
     }
     return result;
@@ -301,12 +320,12 @@ export class LocalVault {
 
   async flag(
     contentHash: string,
-    field: 'shared' | 'pendingShare',
+    field: 'shared' | 'pendingShare' | 'meshRetained',
     value: boolean,
     listedAt?: number
   ) {
     let changed: StoredArticle | null = null;
-    await this.store.update((records: StoredArticle[]) => {
+    await this.#update((records: StoredArticle[]) => {
       const updated: StoredArticle[] = records.map((record: StoredArticle) => {
         if (record.contentHash !== contentHash) return record;
         changed = {
@@ -333,11 +352,14 @@ export class LocalVault {
       throw new Error('Invalid listing timestamp.');
     return this.flag(hash, 'shared', value, listedAt);
   }
+  retainForMesh(hash: string) {
+    return this.flag(hash, 'meshRetained', true);
+  }
   setPending(hash: string, value: boolean) {
     return this.flag(hash, 'pendingShare', value);
   }
   deleteRecord(hash: string) {
-    return this.store.update((records: StoredArticle[]) =>
+    return this.#update((records: StoredArticle[]) =>
       records.filter((record: StoredArticle) => record.contentHash !== hash)
     );
   }
@@ -350,7 +372,7 @@ export class ShareReceipts {
   maxRecords: number;
   maxBytes: number;
   constructor({
-    name = 'emberpage-receipts-v1',
+    name = 'emberpage-ipfs-shares-v2',
     indexedDB = globalThis.indexedDB,
     maxRecords = 20,
     maxBytes = 256 * 1024
@@ -369,8 +391,7 @@ export class ShareReceipts {
     this.maxBytes = maxBytes;
   }
   async put(
-    receipt: Omit<ShareReceipt, 'provider' | 'uploaded'> &
-      Partial<Pick<ShareReceipt, 'provider' | 'uploaded'>>
+    receipt: Omit<ShareReceipt, 'pinned'> & Partial<Pick<ShareReceipt, 'pinned'>>
   ) {
     if (
       !receipt ||
@@ -379,23 +400,19 @@ export class ShareReceipts {
       !Number.isSafeInteger(receipt.size) ||
       receipt.size < 1 ||
       receipt.size > 2 * 1024 * 1024 ||
-      (receipt.provider !== undefined &&
-        receipt.provider !== 'https://blossom.primal.net') ||
-      (receipt.uploaded !== undefined && typeof receipt.uploaded !== 'boolean')
+      (receipt.cid !== undefined && !isSnapshotCid(receipt.cid)) ||
+      (receipt.routes !== undefined && !isSnapshotRoutes(receipt.routes)) ||
+      (receipt.pinned === true && (receipt.cid === undefined || receipt.routes === undefined)) ||
+      (receipt.pinned !== undefined && typeof receipt.pinned !== 'boolean')
     )
       throw new Error('Invalid share receipt.');
-    const saved: {
-      contentHash: string;
-      blobHash: string;
-      size: number;
-      provider: string;
-      uploaded: boolean;
-    } = {
+    const saved: ShareReceipt = {
       contentHash: receipt.contentHash,
       blobHash: receipt.blobHash,
       size: receipt.size,
-      provider: receipt.provider ?? 'https://blossom.primal.net',
-      uploaded: receipt.uploaded ?? false
+      ...(receipt.cid === undefined ? {} : { cid: receipt.cid }),
+      ...(receipt.routes === undefined ? {} : { routes: [...receipt.routes] }),
+      pinned: receipt.pinned ?? false
     };
     await this.store.update((records: ShareReceipt[]) => {
       const next: ShareReceipt[] = [
@@ -418,12 +435,8 @@ export class ShareReceipts {
     });
     return saved;
   }
-  async get(hash: string) {
-    return (
-      (await this.list()).find(
-        (record: ShareReceipt) => record.contentHash === hash
-      ) || null
-    );
+  get(hash: string) {
+    return this.store.get(hash);
   }
   list() {
     return this.store.update();

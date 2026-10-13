@@ -250,6 +250,11 @@ await test("actual dependency-cruiser policy rejects extension-to-dashboard and 
         }
         const fixtures = [
           {
+            path: "src/transport/wire-violation.ts",
+            source: "import { finalizeEvent } from 'nostr-tools/pure'; export const value = finalizeEvent;",
+            rule: "nostr-wire-format-owned-by-directory",
+          },
+          {
             path: "src/extension.ts",
             source:
               "import { target } from '../aggregator/target.ts'; export const value = target;",

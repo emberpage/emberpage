@@ -2,7 +2,8 @@ import { Effect } from 'effect';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { sanitizeArticle } from '../src/extraction/sanitize.ts';
+import { sanitizeArticle, articleText } from '../src/extraction/sanitize.ts';
+import { articleForMode } from '../src/domain/preview.ts';
 import { captureArticleEffect } from '../src/extraction/content.ts';
 
 
@@ -278,4 +279,30 @@ void test('capture rejects oversized and deeply nested source DOMs before clonin
   const nested = fixture('<div>'.repeat(102) + '<p>A nested article.</p>' + '</div>'.repeat(102));
   const deep = await Effect.runPromise(captureArticleEffect(nested));
   assert.equal(deep.ok, false);
+});
+
+await test('text-only output preserves compact blocks, inline words, cells, line breaks and escaped content', () => {
+  const doc = fixture('<main><p>One <strong>bold</strong> word &amp; &lt;tag&gt;.</p><p>Two.</p><ul><li>First</li><li>Second</li></ul><table><tr><th>Name</th><th>Value</th></tr><tr><td>A</td><td>B</td></tr></table><p>Line one<br>Line two</p><pre>const a = 1;\n  const b = 2;</pre></main>');
+  const root = doc.querySelector('main'); assert.ok(root);
+  const text = articleText(root);
+  assert.match(text, /One bold word & <tag>\.\n\nTwo\./);
+  assert.match(text, /First\n\nSecond/);
+  assert.match(text, /Name\tValue\n\nA\tB/);
+  assert.match(text, /Line one\nLine two/);
+  assert.match(text, /const a = 1;\n {2}const b = 2;/);
+  const converted = articleForMode({url: 'https://example.org', title: 'Text', byline: '', capturedAt: 1, content: root.innerHTML, textContent: text}, true);
+  const preview = doc.createElement('div'); preview.innerHTML = converted.content;
+  assert.equal(preview.querySelector('tag'), null);
+  assert.ok(preview.querySelectorAll('p').length >= 7);
+  assert.ok(preview.querySelectorAll('br').length >= 2);
+  assert.match(preview.textContent || '', /One bold word & <tag>\./);
+});
+await test('real capture preserves paragraph boundaries without source newlines', async () => {
+  const prose = 'These original observations explain the experiment and its conclusions. '.repeat(20);
+  const doc = fixture(`<title>Compact article</title><article><p>${prose}</p><p>Separate conclusion. ${prose}</p></article>`);
+  const result = await capture(doc);
+  assert.match(result.article.textContent, /\n\nSeparate conclusion\./);
+  const converted = articleForMode(result.article, true);
+  const preview = doc.createElement('div'); preview.innerHTML = converted.content;
+  assert.equal(preview.querySelectorAll('p').length, 2);
 });

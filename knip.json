@@ -4,7 +4,7 @@
     "src/pages/popup.ts",
     "src/pages/review.ts",
     "src/pages/reader.ts",
-    "src/platform/offscreen.ts",
+    "src/offscreen.ts",
     "aggregator/public/dashboard.ts",
     "tests/*.test.ts",
     "scripts/smoke*.ts"

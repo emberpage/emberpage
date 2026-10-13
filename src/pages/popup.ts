@@ -1,7 +1,7 @@
 import { BoundaryError, errorMessage } from '../domain/errors.ts';
 import { Effect } from 'effect';
 import type { PopularEntry } from '../domain/types.ts';
-import { send, status, busy, hostname, element, control, sendEffect } from './ui.ts';
+import { send, status, busy, hostname, element, control } from './ui.ts';
 const $ = element;
 const buttonAt = (selector: string) => control(selector, 'button');
 let currentTab: chrome.tabs.Tab | undefined;
@@ -10,54 +10,44 @@ async function init() {
   const stored: unknown = await chrome.storage.local.get('accepted');
   const accepted = !!stored && typeof stored === 'object' && 'accepted' in stored && stored.accepted === true;
   if (!accepted) await send('ACCEPT');
-  const { tabs, catalog } = await Effect.runPromise(Effect.all({
-    tabs: Effect.tryPromise({ try: () => chrome.tabs.query({ active: true, currentWindow: true }), catch: (error) => BoundaryError.from(error, errorMessage(error)) }),
-    catalog: sendEffect('LOCAL_CATALOG')
-  }, { concurrency: 2 }));
+  const tabs = await Effect.runPromise(Effect.tryPromise({
+    try: () => chrome.tabs.query({ active: true, currentWindow: true }),
+    catch: (error) => BoundaryError.from(error, errorMessage(error))
+  }));
   [currentTab] = tabs;
   const supported = /^https?:\/\//.test(currentTab?.url || '');
+  $('#domain').hidden = !supported;
   $('#domain').textContent = supported
     ? hostname(currentTab?.url || '')
-    : 'Choose a web page';
+    : '';
   $('#page-title').textContent = supported
     ? currentTab?.title || currentTab?.url || 'Article'
     : 'Open an article to preserve it.';
   buttonAt('#capture').disabled = !supported;
   buttonAt('#previewMenu').disabled = !supported;
-  renderCatalog(catalog);
+  buttonAt('#browse').disabled = !supported;
+  if (supported) renderCatalog(await send('LOCAL_CATALOG', { url: currentTab?.url }));
   await library();
 }
-async function changeView(button: HTMLButtonElement) {
-  selectView(button.dataset.view || 'library');
-  if (button.dataset.view === 'read') await browse(button);
-  else await library();
-}
-for (const button of [...document.querySelectorAll('button')].filter((button) => button.dataset.view))
-  button.addEventListener('click', () => {
-    void changeView(button).catch((error) => status(errorMessage(error), true));
-  });
 function selectView(view: string) {
-  for (const tab of [...document.querySelectorAll('button')].filter((button) => button.dataset.view)) {
-    if (tab.dataset.view === view) tab.setAttribute('aria-current', 'page');
-    else tab.removeAttribute('aria-current');
-  }
   for (const name of ['read', 'library']) $(`#${name}-view`).hidden = name !== view;
   status('');
 }
-function item(title: string, detail: string, open: () => Promise<unknown>) {
+function item(title: string, detail: string, open?: () => Promise<unknown>) {
   const row = document.createElement('div');
   row.className = 'item';
   const button = document.createElement('button');
-  button.className = 'item-main';
+  const main = open ? button : document.createElement('div');
+  main.className = 'item-main';
   const label = document.createElement('span');
   label.className = 'item-title';
   label.textContent = title;
   const meta = document.createElement('span');
   meta.className = 'item-detail';
   meta.textContent = detail;
-  button.append(label, meta);
-  button.addEventListener('click', () => void busy(button, open));
-  row.append(button);
+  main.append(label, meta);
+  if (open) button.addEventListener('click', () => void busy(button, open));
+  row.append(main);
   return row;
 }
 function empty(container: HTMLElement, text: string) {
@@ -66,7 +56,7 @@ function empty(container: HTMLElement, text: string) {
   paragraph.textContent = text;
   container.append(paragraph);
 }
-function renderCatalog(entries: PopularEntry[], emptyMessage = 'No shared articles yet. Your saved articles are in Archive.') {
+function renderCatalog(entries: PopularEntry[], emptyMessage = 'No saved copies of this page found.') {
   const container = $('#catalog-list');
   container.replaceChildren();
   if (!entries.length)
@@ -76,7 +66,7 @@ function renderCatalog(entries: PopularEntry[], emptyMessage = 'No shared articl
     container.append(
       item(
         entry.title,
-        `${hostname(entry.url)} · ${helpful} helpful ${helpful === 1 ? 'vote' : 'votes'}`,
+        `Archived ${new Date(entry.capturedAt).toLocaleDateString()} · ${helpful} helpful ${helpful === 1 ? 'vote' : 'votes'}`,
         async () => {
           await send('OPEN_COPY', { id: entry.contentHash });
           status('Article opened in a new tab.');
@@ -88,14 +78,16 @@ function renderCatalog(entries: PopularEntry[], emptyMessage = 'No shared articl
 async function browse(button: HTMLButtonElement) {
   await busy(button, async () => {
     if (!$('#catalog-list').querySelector('.item')) $('#catalog-list').replaceChildren();
-    status('Finding articles…');
-    const result = await send('CATALOG');
+    if (!/^https?:\/\//.test(currentTab?.url || '')) throw new Error('Choose a web article first.');
+    status('Finding copies…');
+    const result = await send('CATALOG', { url: currentTab?.url });
     const entries = result.entries;
     renderCatalog(entries, result.warning || undefined);
     status(entries.length ? result.warning : '');
   });
 }
 buttonAt('#browse').addEventListener('click', () => {
+  managing = false;
   selectView('read');
   void browse(buttonAt('#browse')).catch((error) => status(errorMessage(error), true));
 });
@@ -109,16 +101,20 @@ function capture(button: HTMLButtonElement, action: 'SAVE_PAGE' | 'CAPTURE') {
 buttonAt('#capture').addEventListener('click', () => void capture(buttonAt('#capture'), 'SAVE_PAGE'));
 buttonAt('#previewMenu').addEventListener('click', () => void capture(buttonAt('#previewMenu'), 'CAPTURE'));
 async function library() {
-  const records = await send('LIBRARY');
+  const supported = /^https?:\/\//.test(currentTab?.url || '');
+  $('#library-view').hidden = !managing && !supported;
+  const records = managing
+    ? await send('LIBRARY')
+    : supported ? await send('LIBRARY', { url: currentTab?.url }) : [];
+  $('#library-title').textContent = managing ? 'Your archive' : 'Saved for this page';
   $('#saved-count').textContent = String(records.length);
   buttonAt('#clear').hidden = !records.length;
-  $('#manage').hidden = !records.length;
   $('#done').hidden = !managing;
   $('#saved-count').hidden = managing;
   const container = $('#library-list');
   container.replaceChildren();
   if (!records.length)
-    empty(container, 'Save an article to start your reading archive.');
+    empty(container, managing ? 'Your archive is empty.' : 'No saved copy of this page yet.');
   for (const record of records) {
     const detail = record.pendingShare
       ? 'Sharing unfinished'
@@ -127,9 +123,11 @@ async function library() {
           ? 'Community archive'
           : 'Public archive'
         : 'Saved on this device';
-    const row = item(record.title, `${hostname(record.url)} · ${detail}`, () =>
-      send('OPEN_COPY', { id: record.contentHash })
-    );
+    const row = record.source === 'mesh'
+      ? item(record.title, 'The article is no longer in your archive. Remove its retained contribution to free space.')
+      : item(record.title, `${managing ? hostname(record.url) + ' · ' : ''}${new Date(record.capturedAt).toLocaleString()} · ${detail}`, () =>
+        send('OPEN_COPY', { id: record.contentHash })
+      );
     const controls = document.createElement('div');
     controls.className = 'item-actions';
     controls.hidden = !managing;
@@ -137,9 +135,9 @@ async function library() {
       const retry = document.createElement('button');
       retry.className = 'small-button';
       retry.textContent = 'Retry sharing';
-      retry.addEventListener('click', () =>
+      retry.addEventListener('click', () => {
         void busy(retry, async () => {
-          const result = await send('RETRY_SHARE', { id: record.contentHash });
+          const result = await send('CONTRIBUTE', { id: record.contentHash });
           status(
             result.warning ||
               result.shareError ||
@@ -148,8 +146,8 @@ async function library() {
           );
           await library();
           focusLibrary();
-        })
-      );
+        });
+      });
       controls.append(retry);
       const discard = document.createElement('button');
       discard.className = 'small-button';
@@ -160,7 +158,7 @@ async function library() {
           await library();
           focusLibrary();
           status(
-            'Sharing canceled. An already uploaded copy may still be public.'
+            'Sharing canceled. An IPFS copy may still be public.'
           );
         })
       );
@@ -193,6 +191,7 @@ async function manageLibrary() {
 }
 async function finishManaging() {
   managing = false;
+  selectView('library');
   try {
     await library();
     focusLibrary();
@@ -201,19 +200,29 @@ async function finishManaging() {
 $('#manage').addEventListener('click', () => { void manageLibrary(); });
 $('#done').addEventListener('click', () => { void finishManaging(); });
 function focusLibrary() {
-  (document.querySelector('#library-list .item-main') ? buttonAt('#library-list .item-main') : buttonAt('[data-view="library"]')).focus();
+  (document.querySelector('#library-list button') ? buttonAt('#library-list button') : control('#options > summary', 'summary')).focus();
 }
 buttonAt('#clear').addEventListener('click', () =>
   void busy(buttonAt('#clear'), async () => {
     await send('CLEAR');
     managing = false;
+    selectView('library');
     await library();
     renderCatalog([]);
     control('#options', 'details').open = false;
-    $('[data-view="library"]').focus();
+    focusLibrary();
     status(
       'Saved copies removed. Public copies may still be available.'
     );
   })
 );
 init().catch((error) => status(errorMessage(error), true));
+
+buttonAt('#pause-contribution').addEventListener('click', () =>
+  void busy(buttonAt('#pause-contribution'), async () => {
+    await send('STOP_MESH');
+    control('#options', 'details').open = false;
+    control('#options > summary', 'summary').focus();
+    status('Contribution paused. Saved copies stay on this device.');
+  })
+);

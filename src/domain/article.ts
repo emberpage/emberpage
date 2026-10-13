@@ -12,6 +12,12 @@ const ArticleFields = Schema.Struct({
   capturedAt: Schema.Number
 });
 const HASH: RegExp = /^[a-f0-9]{64}$/;
+const CopyIdentity = Schema.Struct({
+  blobHash: Schema.String.check(Schema.isPattern(HASH)),
+  contentHash: Schema.String.check(Schema.isPattern(HASH)),
+  urlHash: Schema.String.check(Schema.isPattern(HASH)),
+  size: Schema.Int.check(Schema.isBetween({minimum: 1, maximum: MAX_ARTICLE_BYTES})),
+});
 export async function sha256(value: string | Uint8Array<ArrayBufferLike>) {
   const bytes: Uint8Array<ArrayBufferLike> =
     typeof value === 'string' ? encoder.encode(value) : value;
@@ -138,26 +144,36 @@ export async function encodeArticle(
 }
 export async function decodeArticle(
   input: unknown,
-  { blobHash, now = Date.now() }: { blobHash?: string | undefined; now?: number | undefined } = {}
+  { blobHash, expected, now = Date.now() }: {
+    blobHash?: string | undefined; expected?: unknown; now?: number | undefined;
+  } = {}
 ) {
   if (!(input instanceof Uint8Array) || !input.byteLength || input.byteLength > MAX_ARTICLE_BYTES)
     throw new Error('Invalid article file size.');
   const bytes = input.slice();
+  const identity = expected === undefined ? undefined : Schema.decodeUnknownSync(CopyIdentity)(expected);
+  if (identity && identity.size !== bytes.byteLength)
+    throw new Error('Article file metadata does not match.');
+  blobHash ??= identity?.blobHash;
   if (blobHash !== undefined && (!HASH.test(blobHash) || await sha256(bytes) !== blobHash))
     throw new Error('Article file hash does not match.');
   const envelope = Schema.decodeUnknownSync(Schema.Struct({
     format: Schema.Literal('emberpage.article'),
-    version: Schema.Literals([1, 2]),
-    article: Schema.optionalKey(Schema.Unknown),
-    encoding: Schema.optionalKey(Schema.Literal('gzip')),
-    payload: Schema.optionalKey(Schema.String)
+    version: Schema.Literal(2),
+    encoding: Schema.Literal('gzip'),
+    payload: Schema.String
   }))(JSON.parse(decoder.decode(bytes)) as unknown);
-  // Existing archives are an explicit format, never a retry or alternate transport.
-  if (envelope.version === 1) return copy(bytes, validateArticle(envelope.article, { now }));
-  if (envelope.encoding !== 'gzip' || !envelope.payload ||
-      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(envelope.payload))
+  if (!envelope.payload ||
+    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(envelope.payload))
     throw new Error('Invalid compressed article.');
   const compressed = Uint8Array.from(atob(envelope.payload), character => character.charCodeAt(0));
   const expanded = await gzipBytes(compressed, true);
-  return copy(bytes, validateArticle(JSON.parse(decoder.decode(expanded)) as unknown, { now }));
+  const article = JSON.parse(decoder.decode(expanded)) as unknown;
+  const decoded = await copy(bytes, validateArticle(article, { now }));
+  if (identity) {
+    for (const field of ['blobHash', 'contentHash', 'urlHash', 'size'] as const)
+      if (decoded[field] !== identity[field])
+        throw new Error('Article file metadata does not match.');
+  }
+  return decoded;
 }

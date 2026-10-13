@@ -44,7 +44,7 @@
         "path": "^aggregator/"
       },
       "to": {
-        "path": "^src/(?!domain/(?:errors|types|url|article)\\.ts$|directory/)"
+        "path": "^src/(?!domain/(?:errors|types|url|article|cid|routes)\\.ts$|directory/)"
       }
     },
     {
@@ -179,6 +179,16 @@
         "dependencyTypes": [
           "npm-dev"
         ]
+      }
+    },
+    {
+      "name": "nostr-wire-format-owned-by-directory",
+      "severity": "error",
+      "from": {
+        "path": "^src/(?!directory/|platform/identity\\.ts$)"
+      },
+      "to": {
+        "path": "(^|/)nostr-tools(/|$)"
       }
     }
   ],

@@ -1,23 +1,19 @@
 import { BoundaryError, errorMessage } from '../domain/errors.ts';
 import { Effect, Schema } from 'effect';
-import type { Article, PopularEntry, Rating, ShareResult } from '../domain/types.ts';
-interface LibraryEntry {
-  contentHash: string;
-  url: string;
-  title: string;
-  shared?: boolean;
-  pendingShare?: boolean;
+import type { Article, PopularEntry, Rating, ShareResult, SavedCopySummary } from '../domain/types.ts';
+interface LibraryEntry extends Omit<SavedCopySummary, 'blobHash'> {
   source: string;
 }
 export interface Replies {
   ACCEPT: boolean;
   CAPTURE: boolean;
   SAVE_PAGE: boolean;
+  CONTRIBUTE: ShareResult;
+  STOP_MESH: boolean;
   LOCAL_CATALOG: PopularEntry[];
   CATALOG: { entries: PopularEntry[]; warning?: string };
   LIBRARY: LibraryEntry[];
   OPEN_COPY: boolean;
-  RETRY_SHARE: ShareResult;
   DISCARD_SHARE: boolean;
   DELETE: boolean;
   CLEAR: boolean;
@@ -26,7 +22,7 @@ export interface Replies {
   DRAFT: Article & { textContent: string };
   READ: { article: Article; rating: Rating; shared?: boolean };
   RATE: Rating;
-  RATINGS: Rating;
+  RATINGS: Rating & {warning?: string};
 }
 const Reply = Schema.Union([
   Schema.Struct({ ok: Schema.Literals([true]), data: Schema.Unknown }),

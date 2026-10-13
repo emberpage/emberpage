@@ -20,6 +20,17 @@ export interface ArticleCopy {
   listedAt?: number;
   shared?: boolean;
   pendingShare?: boolean;
+  meshRetained?: boolean;
+}
+export interface SavedCopySummary {
+  contentHash: string;
+  blobHash: string;
+  url: string;
+  title: string;
+  capturedAt: number;
+  shared: boolean;
+  pendingShare: boolean;
+  meshRetained?: boolean;
 }
 export interface Listing extends Omit<Article, "content"> {
   id: string;
@@ -29,17 +40,21 @@ export interface Listing extends Omit<Article, "content"> {
   contentHash: string;
   blobHash: string;
   size: number;
-  provider: string;
+  cid: string;
+  routes: readonly string[];
   listedAt?: number;
 }
-export interface UploadReceipt {
+export interface PinReceipt {
+  routes: readonly string[];
   blobHash: string;
   size: number;
-  provider: string;
+  cid: string;
 }
-export interface ShareReceipt extends UploadReceipt {
+export interface ShareReceipt extends Omit<PinReceipt, "cid" | "routes"> {
   contentHash: string;
-  uploaded: boolean;
+  cid?: string;
+  routes?: readonly string[];
+  pinned: boolean;
 }
 export interface RatingTarget {
   urlHash: string;
@@ -70,6 +85,8 @@ export interface ShareResult {
   validationError?: string;
   shareError?: string;
   warning?: string;
+  cid?: string;
+  pinned?: boolean;
 }
 export interface PopularEntry {
   contentHash: string;
@@ -83,18 +100,28 @@ export interface PopularEntry {
   rating: Rating | undefined;
 }
 export interface ArticleNetwork {
-  uploadEffect(copy: ArticleCopy): Effect.Effect<UploadReceipt, Error>;
+  pauseEffect(): Effect.Effect<void, Error>;
+  forgetEffect(blobHash: string): Effect.Effect<void, Error>;
+  clearPinsEffect(): Effect.Effect<void, Error>;
+  pinEffect(copy: ArticleCopy): Effect.Effect<PinReceipt, Error>;
   publishListingEffect(
     copy: ArticleCopy,
-    receipt: UploadReceipt,
-  ): Effect.Effect<Listing, Error>;
+    receipt: PinReceipt,
+  ): Effect.Effect<Listing & { warning?: string }, Error>;
   readArticleEffect(
     listing: Listing,
-    options?: { budget?: { remainingBytes: number } },
+    options?: { budget?: { remainingBytes: number }; routes?: readonly string[] },
   ): Effect.Effect<ArticleCopy, Error>;
-  queryListingsEffect(): Effect.Effect<Listing[], Error>;
-  queryVotesEffect(targets: RatingTarget[]): Effect.Effect<Vote[], Error>;
+  queryListingsEffect(url?: string): Effect.Effect<{records: Listing[]; warning?: string}, Error>;
+  queryVotesEffect(targets: RatingTarget[]): Effect.Effect<{records: Vote[]; warning?: string}, Error>;
   publishVoteEffect(
     value: RatingTarget & { value: number },
   ): Effect.Effect<Vote, Error>;
+}
+
+export interface IpfsMirror {
+  routes: readonly string[];
+  cid: string;
+  uri: string;
+  size: number;
 }

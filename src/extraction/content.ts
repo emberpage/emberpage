@@ -4,6 +4,7 @@ import type { Article } from '../domain/types.ts';
 import { Readability } from '@mozilla/readability';
 import {
   sanitizeArticle,
+  articleText,
   inspectWebP,
   MAX_IMAGES,
   MAX_IMAGE_DIMENSION,
@@ -11,11 +12,6 @@ import {
   MAX_TOTAL_IMAGE_PIXELS,
   validImageDimensions
 } from './sanitize.ts';
-
-
-
-
-
 
 type ImageBudget = { attempts:number;bytes:number;examined:number;screenshots:number;pixels:number;nativeChecked:WeakSet<HTMLImageElement>;deadline:number;stageDeadline:number;limitExceeded:boolean };
 type CaptureResult = {ok:true;imageLimitExceeded:boolean;imageWarning:string;article:Article & {textContent:string}}|{ok:false;error:string};
@@ -27,7 +23,6 @@ const MAX_IMAGE_FETCH_BYTES = 2 * 1024 * 1024;
 const MAX_CAPTURE_FETCH_BYTES = 8 * 1024 * 1024;
 const IMAGE_CAPTURE_TIMEOUT = 8000;
 const IMAGE_STAGE_TIMEOUT = 25000;
-
 
 function afterPaint(view: Window, deadline: number): Promise<boolean> {
   if (Date.now() >= deadline) return Promise.resolve(false);
@@ -46,7 +41,6 @@ function afterPaint(view: Window, deadline: number): Promise<boolean> {
     );
   });
 }
-
 
 async function screenshotPixels(
   original: HTMLImageElement,
@@ -205,7 +199,6 @@ async function screenshotPixels(
   }
 }
 
-
 function encodeImage(image: HTMLImageElement|HTMLCanvasElement|ImageBitmap, sourceDocument: Document, maximumLength: number, budget: ImageBudget) {
   const width = 'naturalWidth' in image ? image.naturalWidth || image.width : image.width,
     height = 'naturalHeight' in image ? image.naturalHeight || image.height : image.height;
@@ -231,7 +224,6 @@ function encodeImage(image: HTMLImageElement|HTMLCanvasElement|ImageBitmap, sour
   }
   return inspectWebP(candidate) ? candidate : null;
 }
-
 
 async function anonymousPixels(original: HTMLImageElement, sourceDocument: Document, budget: ImageBudget): Promise<ImageBitmap|null> {
   const view = sourceDocument.defaultView;
@@ -347,7 +339,6 @@ async function anonymousPixels(original: HTMLImageElement, sourceDocument: Docum
   }
 }
 
-
 async function embedLoadedImages(html: string, sourceDocument: Document, baseUrl: string, captureToken: string|undefined) {
   
   const loaded = new Map<string,HTMLImageElement>();
@@ -408,9 +399,7 @@ async function embedLoadedImages(html: string, sourceDocument: Document, baseUrl
       total < MAX_TOTAL_IMAGE_URI_LENGTH
     ) {
       budget.examined++;
-      const maximumLength = Math.min(
-              MAX_TOTAL_IMAGE_URI_LENGTH - total
-      );
+      const maximumLength = MAX_TOTAL_IMAGE_URI_LENGTH - total;
       if (
         original.complete &&
         original.naturalWidth > 1 &&
@@ -553,7 +542,6 @@ function articleByline(sourceDocument: Document, extractedByline: string|null|un
   return '';
 }
 
-
 async function captureArticleSnapshot(
   sourceDocument: Document = document,
   { captureToken }: {captureToken?:string} = {}
@@ -604,7 +592,7 @@ async function captureArticleSnapshot(
     const content = sanitizeArticle(embedded.content, url.href);
     const preview = sourceDocument.createElement('div');
     preview.innerHTML = content;
-    const textContent = preview.textContent.trim();
+    const textContent = articleText(preview);
     if (textContent.length < 80)
       throw new Error(
         'There is too little article text to capture. Open the full article and try again.'

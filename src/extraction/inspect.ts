@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 import type { Article } from '../domain/types.ts';
-import { sanitizeArticle, inspectWebP, MAX_IMAGES, MAX_TOTAL_IMAGE_URI_LENGTH, MAX_TOTAL_IMAGE_PIXELS } from './sanitize.ts';
+import { sanitizeArticle, articleText, inspectWebP, MAX_IMAGES, MAX_TOTAL_IMAGE_URI_LENGTH, MAX_TOTAL_IMAGE_PIXELS } from './sanitize.ts';
 
 /** Inspect inert sanitized HTML; derived text can differ across renderer versions. */
 
@@ -35,7 +35,7 @@ export function inspectArticle(input: Pick<Article,'content'|'url'>) {
   const content = sanitizeArticle(article.content, article.url);
   const container = document.createElement('div');
   container.innerHTML = content;
-  const textContent = container.textContent.replace(/\s+/g, ' ').trim();
+  const textContent = articleText(container).replace(/\s+/g, ' ').trim();
   const paragraphs = container.querySelectorAll('p').length;
   const headings = container.querySelectorAll('h1,h2,h3,h4,h5,h6').length;
   const images = container.querySelectorAll('img').length;

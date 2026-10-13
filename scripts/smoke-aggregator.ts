@@ -7,7 +7,9 @@ import assert from 'node:assert/strict';
 import { createAggregatorServer } from '../aggregator/server.ts';
 import { AggregatorStore } from '../aggregator/store.ts';
 import { hashUrl } from '../src/domain/article.ts';
-import { PROVIDER } from '../src/directory/nostr.ts';
+import { RELAYS } from '../src/directory/nostr.ts';
+import { PUBLIC_BOOTSTRAP_ROUTES } from '../src/domain/routes.ts';
+
 
 // Isolated, explicitly named metadata fixtures exercise the actual local HTTP server and UI.
 // This test never publishes fixtures to the public relay or retrieves article bodies.
@@ -17,10 +19,11 @@ const now = Date.now();
 const entries = await Promise.all(([
   ['https://example.com/fixture-ai', 'Explicit test fixture: AI research', 'a'],
   ['https://example.org/fixture-science', 'Explicit test fixture: Coastal science', 'b'],
-] as [string, string, string][]).map(async ([url, title, hash]) => ({ id:hash.repeat(64),pubkey:'f'.repeat(64),url,urlHash:await hashUrl(url),contentHash:hash.repeat(64),blobHash:'c'.repeat(64),size:150000,title,byline:'Test writer',capturedAt:now-60*86400_000,createdAt:now,provider:PROVIDER })));
+] as [string, string, string][]).map(async ([url, title, hash]) => ({ id:hash.repeat(64),pubkey:'f'.repeat(64),url,urlHash:await hashUrl(url),contentHash:hash.repeat(64),blobHash:'c'.repeat(64),size:150000,title,byline:'Test writer',capturedAt:now-60*86400_000,createdAt:now,routes:[`${PUBLIC_BOOTSTRAP_ROUTES[0]}/p2p-circuit/webrtc/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN`],cid:'bafkreic7i2p4bhkouoidnqnh3ak6lagk3qhcef65qzdgbz735zexp4hu4m' })));
+let limitedCoverage = false;
 const directory = {
-  queryListings() { calls.push('listings'); return Promise.resolve(entries); },
-  queryVotes() { calls.push('votes'); return Promise.resolve([]); },
+  queryListings() { calls.push('listings'); return Promise.resolve({records: entries, diagnostics: {received: entries.length, accepted: entries.length, rejected: 0, duplicates: 0, relays: RELAYS.map((relay, index) => ({relay, outcome: limitedCoverage && index === 2 ? 'failure' : 'success', ...(limitedCoverage && index === 2 ? {error: 'timeout'} : {})}))}}); },
+  queryVotes() { calls.push('votes'); return Promise.resolve({records: [], diagnostics: {received: 0, accepted: 0, rejected: 0, duplicates: 0, relays: RELAYS.map(relay => ({relay, outcome: 'success'}))}}); },
 };
 const server = createAggregatorServer({ store, directory });
 if (!server.listening) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); }
@@ -105,6 +108,18 @@ try {
   await activate(page, '#refresh');
   await page.waitForFunction(() => document.querySelector<HTMLButtonElement>('#refresh')?.disabled === false);
   assert.match(await page.locator('#status').textContent() || '', /Update finished/);
+  limitedCoverage = true;
+  await activate(page, '#refresh');
+  await page.waitForFunction(() => document.querySelector('#network-label')?.textContent === 'Updated with limited coverage');
+  assert.equal(await page.locator('#status').textContent(), 'Updated. Some results may be missing.');
+  assert.equal(await page.locator('#tools').getAttribute('open'), null, 'Coverage is explained without opening settings');
+  await page.screenshot({path: 'artifacts/aggregator-limited-coverage.png', fullPage: true});
+  assert.equal(await page.locator('#article-list .article-row').count(), 2, 'Partial coverage retains usable metadata');
+  limitedCoverage = false;
+  await activate(page, '#refresh');
+  await page.waitForFunction(() => document.querySelector('#network-label')?.textContent === 'Last update succeeded');
+  assert.equal(await page.locator('#status').textContent(), 'Update finished.');
+
   assert.ok(calls.includes('listings') && calls.includes('votes'));
   await activate(page, '[data-view="articles"]');
   const focused = page.locator('#article-list a').first(); await focused.focus();

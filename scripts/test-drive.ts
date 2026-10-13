@@ -7,6 +7,8 @@ import type { Replies } from '../src/pages/ui.ts';
 // RUN_TEST_DRIVES=1 pnpm exec tsx scripts/test-drive.ts. Without the flag, print the prepared scenario inventory.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { JSDOM } from 'jsdom';
+import { articleText } from '../src/extraction/sanitize.ts';
 import { mkdtemp, cp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -15,6 +17,7 @@ import { once } from 'node:events';
 import { createAggregatorServer } from '../aggregator/server.ts';
 import { AggregatorStore } from '../aggregator/store.ts';
 import { hashUrl } from '../src/domain/article.ts';
+import { PUBLIC_BOOTSTRAP_ROUTES } from '../src/domain/routes.ts';
 
 const prose =
   'This original synthetic field notebook explains observations, methods, and conclusions in enough detail for an independent reader. ';
@@ -82,15 +85,18 @@ async function draft({
 }: DraftOptions = {}) {
   const id = crypto.randomUUID();
   record('Seed a sealed original synthetic preview (edge-state setup only)');
+  const dom = new JSDOM(html);
+  const textContent = articleText(dom.window.document.body);
+  dom.window.close();
   await popup.evaluate(
-    async ({ id, title, html, url }) => {
+    async ({ id, title, html, url, textContent }) => {
       const article: Article & {textContent: string} = {
         url,
         title,
         byline: 'Synthetic test writer',
         capturedAt: Date.now(),
         content: html,
-        textContent: html.replace(/<[^>]*>/g, '')
+        textContent
       };
       const input = JSON.stringify([
         article.url,
@@ -113,7 +119,7 @@ async function draft({
         ['seal:' + id]: seal
       });
     },
-    { id, title, html, url: url || `https://example.org/test-drive-${id}` }
+    { id, title, html, textContent, url: url || `https://example.org/test-drive-${id}` }
   );
   return id;
 }
@@ -161,7 +167,7 @@ async function waitForReader(page: Page) {
 }
 async function readSaved() {
   await popup.reload();
-  await activate(popup, '[data-view="library"]');
+  await activate(popup, '#manage');
   await popup.locator('#library-list .item-main').first().waitFor();
   const opened = browser().waitForEvent('page');
   await activate(popup, '#library-list .item-main');
@@ -173,46 +179,76 @@ async function readSaved() {
 }
 const scenarios = [
   {
-    name: 'First launch opens the archive without contacting public services',
+    name: 'First launch opens current-page tools without contacting public services',
     reset: false,
     async run() {
-      await popup.locator('#library-list .empty').waitFor();
+      await popup.locator('#library-list .empty').waitFor({ state: 'attached' });
+      assert.equal(await popup.locator('#library-view').isVisible(), false);
+      assert.equal(await popup.locator('#capture').isDisabled(), true);
+      assert.equal(await popup.locator('#browse').isDisabled(), true);
       assert.equal(await popup.locator('#app').isVisible(), true);
       assert.equal(await popup.locator('#welcome,#accept').count(), 0);
       assert.equal(await popup.locator('#options').getAttribute('open'), null);
       assert.match(await popup.locator('#options').textContent() || '', /public/);
       assert.deepEqual(publicRequests, []);
-      return ['Local saved list opens directly', 'Options closed', 'No automatic network publication or queries'];
+      return ['Unsupported page has one instruction and disabled page actions', 'Options closed', 'No automatic network publication or queries'];
     }
   },
   {
-    name: 'Keyboard navigation loads Community only when selected',
+    name: 'Current page filtering, full archive management and lookup are keyboard accessible',
     reset: false,
     async run() {
-      assert.equal(await popup.locator('[data-view]').count(), 2);
-      await activate(popup, '#options > summary');
-      assert.equal(await popup.locator('#options').getAttribute('open'), '');
-      await activate(popup, '#options > summary');
-      await activate(popup, '[data-view="library"]');
+      const source = await browser().newPage();
+      await source.goto(origin + '/article?utm_source=test');
+      await seededSave({ title: 'Matching saved article', url: origin + '/article' });
+      await seededSave({ title: 'Unrelated saved article', url: origin + '/unrelated' });
+      await source.bringToFront();
+      await popup.reload();
+      await popup.getByRole('button', { name: 'Matching saved article', exact: false }).waitFor();
+      assert.equal(await popup.locator('[data-view]').count(), 0);
+      assert.equal(await popup.locator('#library-list .item').count(), 1);
+      assert.doesNotMatch(await popup.locator('#library-list').textContent() || '', /Unrelated/);
+      assert.equal(await popup.getByRole('button', { name: 'Find saved copies', exact: true }).isVisible(), true);
+      assert.deepEqual(publicRequests, [], 'Local page filtering never queries public services');
+      await activate(popup, '#manage');
+      await popup.waitForFunction(() => document.querySelectorAll('#library-list .item').length === 2);
+      await activate(popup, '#done');
+      await popup.waitForFunction(() => document.querySelectorAll('#library-list .item').length === 1);
       await browser().setOffline(true);
-      await popup.keyboard.press('Tab');
-      assert.equal(await popup.evaluate(() => document.activeElement?.getAttribute('data-view')), 'read');
-      await popup.keyboard.press('Enter');
+      await activate(popup, '#browse');
       await popup.waitForFunction(() => document.querySelector('#status')?.classList.contains('error'));
-      await activate(popup, '[data-view="library"]');
+      assert.equal(await popup.locator('#browse').isDisabled(), false);
       await browser().setOffline(false);
-      return ['Archive and Community are keyboard reachable', 'Community selection starts the bounded search without a second button'];
+      return ['Only current URL copies appear by default; tracker parameters ignored', 'Manage exposes full archive and Done restores page scope', 'One visible keyboard lookup reports recoverable offline failure'];
     }
   },
   {
     name: 'Unsupported browser pages disable capture',
     async run() {
+      await seededSave({ title: 'Previously saved article' });
       const page = await browser().newPage();
       await page.goto('about:blank');
       await page.bringToFront();
       await popup.reload();
-          assert.equal(await popup.locator('#capture').isDisabled(), true);
-      return ['Invalid source has a clear disabled action'];
+      await popup.locator('#domain').waitFor({ state: 'hidden' });
+      assert.equal(await popup.locator('#capture').isDisabled(), true);
+      assert.equal(await popup.locator('#browse').isDisabled(), true);
+      assert.equal(await popup.locator('#page-title').textContent(), 'Open an article to preserve it.');
+      assert.equal(await popup.locator('#library-view').isVisible(), false);
+      await activate(popup, '#manage');
+      await popup.waitForFunction(() => document.querySelector('#library-title')?.textContent === 'Your archive'
+        && document.querySelectorAll('#library-list .item').length === 1);
+      assert.equal(await popup.locator('#library-view').isVisible(), true);
+      assert.equal(await popup.locator('#library-title').textContent(), 'Your archive');
+      assert.equal(await popup.locator('#library-list .item').count(), 1);
+      await activate(popup, '#done');
+      assert.equal(await popup.locator('#library-view').isVisible(), false);
+      assert.equal(await popup.locator('#options > summary').evaluate(element => element === document.activeElement), true);
+      await activate(popup, '#manage');
+      await activate(popup, '#clear');
+      await popup.waitForFunction(() => document.querySelector('#status')?.textContent?.includes('Saved copies removed.'));
+      assert.equal(await popup.locator('#library-view').isVisible(), false);
+      return ['Unsupported pages show one instruction with disabled page actions', 'Manage remains accessible and Done restores the uncluttered unsupported-page state'];
     }
   },
   {
@@ -245,7 +281,7 @@ const scenarios = [
       const savedReader = await opened;
       await waitForReader(savedReader);
       assert.equal(await savedReader.locator('#review-controls').count(), 0, 'One Save action opens the reader without a preview step');
-      assert.equal(await savedReader.locator('#copy-label').textContent() || '', 'Private copy');
+      assert.equal(await savedReader.locator('#copy-label').textContent() || '', 'Saved copy');
       await browser().setOffline(true);
       const reading = await readSaved();
       await reading.waitForFunction(
@@ -257,9 +293,18 @@ const scenarios = [
         [],
         'Private capture and reading do not contact a public provider'
       );
+      assert.equal(await reading.locator('#preserve-ipfs').isVisible(), true);
+      await activate(reading, '#preserve-ipfs');
+      await reading.waitForFunction(() => document.querySelector('#ipfs-status')?.classList.contains('error'));
+      assert.equal(await reading.locator('#preserve-ipfs').isDisabled(), false);
+      assert.ok((await reading.locator('#article').textContent() || '').length >= 1000);
+      assert.equal(await reading.locator('#ipfs-setup').count(), 0, 'No desktop setup or local-node permission is required');
+      await browser().setOffline(false);
       return [
         'Private copy readable offline',
-        'Private copies have no public rating controls'
+        'Private copies have no public rating controls',
+        'Explicit browser sharing failure retains the readable local copy',
+        'Browser-only sharing has no desktop setup panel'
       ];
     }
   },
@@ -281,10 +326,12 @@ const scenarios = [
       );
       await review.keyboard.press('Space');
       assert.equal(await review.locator('#article img').count(), 0);
+      assert.ok(await review.locator('#article p').count() >= 2, 'Text-only preview retains separate paragraphs');
       await activate(review, '#save');
       await waitForReader(review);
       const reading = await readSaved();
       assert.equal(await reading.locator('#article img').count(), 0);
+      assert.ok(await reading.locator('#article p').count() >= 2, 'Saved text-only copy retains separate paragraphs');
       assert.ok(
         (await reading.locator('#article').textContent() || '').length >= 1000
       );
@@ -318,7 +365,7 @@ const scenarios = [
       );
       assert.match(await page.locator('#status').textContent() || '', /too short or incomplete to share/);
       assert.equal((await successful('LIBRARY'))[0]?.shared, false);
-      assert.deepEqual(await successful('LOCAL_CATALOG'), []);
+      assert.deepEqual(await successful('LOCAL_CATALOG', { url: origin + '/article' }), []);
       return [
         'Short body rejected for Popular',
         'Local copy retained with clear explanation'
@@ -460,7 +507,6 @@ const scenarios = [
     async run() {
       await browser().setOffline(true);
       await popup.reload();
-      await activate(popup, '[data-view="library"]');
       await activate(popup, '#manage');
       await popup.getByRole('button', { name: 'Retry sharing' }).waitFor();
       await activate(popup, '#library-list .item-actions button:first-child');
@@ -527,8 +573,13 @@ const scenarios = [
     }
   },
   {
-    name: 'Offline Community reports failure and restores its action',
+    name: 'Offline current-page lookup reports failure and restores its action',
     async run() {
+      const source = await browser().newPage();
+      await source.goto(origin + '/article');
+      await source.bringToFront();
+      await popup.reload();
+      await popup.waitForFunction(() => document.querySelector<HTMLButtonElement>('#browse')?.disabled === false);
       await browser().setOffline(true);
       await activate(popup, '#browse');
       await popup.waitForFunction(() =>
@@ -578,6 +629,7 @@ const scenarios = [
       );
       await browser().setOffline(true);
       const reading = await readSaved();
+      assert.equal(await reading.locator('#helpful').isVisible(), true, 'Shared readers expose Helpful without opening options');
       await activate(reading, '#refresh-ratings');
       await reading.waitForFunction(() =>
         document.querySelector('#status')?.classList.contains('error')
@@ -605,9 +657,8 @@ const scenarios = [
     async run() {
       await seededSave({ title: 'Original removal fixture' });
       await seededSave({ title: 'Original clear fixture' });
-      await activate(popup, '[data-view="library"]');
-      await popup.locator('#library-list .item').first().waitFor();
       await activate(popup, '#manage');
+      await popup.locator('#library-list .item').first().waitFor();
       await popup
         .getByRole('button', { name: /^Remove / })
         .first()
@@ -622,25 +673,17 @@ const scenarios = [
       }));
       record('Focus after removal: ' + JSON.stringify(focusAfterRemove));
       await activate(popup, '#clear');
-      await popup.locator('#library-list .empty').waitFor();
+      await popup.getByText('Saved copies removed. Public copies may still be available.', { exact: true }).waitFor();
+      assert.equal(await popup.locator('#library-view').isVisible(), false);
       const focusAfterClear = await popup.evaluate(() => ({
         tag: document.activeElement?.tagName,
         id: document.activeElement?.id
       }));
       record('Focus after clear: ' + JSON.stringify(focusAfterClear));
       assert.deepEqual(await successful('LIBRARY'), []);
-      if (recheck.length) {
-        assert.notEqual(
-          focusAfterRemove.tag,
-          'BODY',
-          'Removing a row must preserve keyboard focus'
-        );
-        assert.notEqual(
-          focusAfterClear.tag,
-          'BODY',
-          'Clearing rows must preserve keyboard focus'
-        );
-      }
+      assert.notEqual(focusAfterRemove.tag, 'BODY', 'Removing a row preserves keyboard focus');
+      assert.equal(focusAfterClear.tag, 'SUMMARY', 'Clearing rows focuses visible Options');
+      assert.equal(await popup.locator('#options > summary').evaluate(node => node === document.activeElement), true);
       return [
         'Removal and clear reflect actual local storage',
         'Focus observations are recorded for final audit'
@@ -657,11 +700,11 @@ const scenarios = [
         directory: {
           queryListings() {
             calls.push('listing');
-            return Promise.resolve([]);
+            return Promise.resolve({records: [], diagnostics: {received: 0, accepted: 0, rejected: 0, duplicates: 0}});
           },
           queryVotes() {
             calls.push('rating');
-            return Promise.resolve([]);
+            return Promise.resolve({records: [], diagnostics: {received: 0, accepted: 0, rejected: 0, duplicates: 0}});
           }
         }
       });
@@ -684,7 +727,7 @@ const scenarios = [
               byline: 'Synthetic test',
               capturedAt: now,
               createdAt: now,
-              provider: 'https://blossom.primal.net'
+              routes: [`${PUBLIC_BOOTSTRAP_ROUTES[0]}/p2p-circuit/webrtc/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN`], cid: 'bafkreic7i2p4bhkouoidnqnh3ak6lagk3qhcef65qzdgbz735zexp4hu4m'
             }
           ],
           []
@@ -745,7 +788,7 @@ async function logResults() {
         : '# Twenty sequential browser test drives\n\nBuild background SHA256: ') +
       buildHash +
       '\n\n' +
-      'Actual built MV3 extension in a disposable Chrome profile. Original local fixtures; public network failures are deliberately offline. Source-only localhost permission substitutes the automation toolbar grant; production CSP is retained. Sealed-draft and status seeding are labeled edge setup, not live publication evidence. No public uploads occur in this suite. Initial failures remain recorded; fixes are rerun separately.\n\n' +
+      'Actual built MV3 extension in a disposable Chrome profile. Original local fixtures; public DNS is blocked in the disposable browser; no synthetic articles or votes can be published. Localhost fixture permission substitutes the automation toolbar activeTab grant; production CSP is retained. Sealed-draft and status seeding are labeled edge setup, not live publication evidence. No public uploads occur in this suite. Initial failures remain recorded; fixes are rerun separately.\n\n' +
       rows.join('\n').trimEnd() +
       '\n'
   );
@@ -782,7 +825,7 @@ if (process.env.RUN_TEST_DRIVES !== '1') {
     response.end(
       request.url === '/empty'
         ? '<html><head><title>Empty original fixture</title></head><body></body></html>'
-        : `<html><head><title>Original coastal test fixture</title></head><body><article><h1>Original coastal test fixture</h1>${content}${'<figure><img src="/image.png" alt="Original fixture illustration"></figure>'.repeat(request.url === '/overflow' ? 11 : 1)}</article></body></html>`
+        : `<html><head><title>Original coastal test fixture</title></head><body><article><h1>Original coastal test fixture</h1>${content}<p>Separate concluding observations remain a distinct paragraph in text-only recovery.</p>${'<figure><img src="/image.png" alt="Original fixture illustration"></figure>'.repeat(request.url === '/overflow' ? 11 : 1)}</article></body></html>`
     );
   });
   await new Promise<void>((resolve) => fixtureServer.listen(0, '127.0.0.1', resolve));
@@ -807,13 +850,14 @@ if (process.env.RUN_TEST_DRIVES !== '1') {
         viewport: { width: 420, height: 800 },
         args: [
           `--disable-extensions-except=${extension}`,
-          `--load-extension=${extension}`
+          `--load-extension=${extension}`,
+          '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost'
         ]
       }
     );
     browser().setDefaultTimeout(20_000);
     browser().on('request', (request) => {
-      if (/primal\.net/.test(request.url())) publicRequests.push(request.url());
+      if (/primal\.net|damus\.io|nos\.lol/.test(request.url())) publicRequests.push(request.url());
     });
     const worker =
       browser().serviceWorkers()[0] ||

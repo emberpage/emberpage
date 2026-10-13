@@ -1,24 +1,18 @@
 import { Effect, Schema } from "effect";
-import { finalizeEvent } from "nostr-tools/pure";
-import { decodeArticle, MAX_ARTICLE_BYTES } from "../domain/article.ts";
-import {
-  NostrDirectory,
-  PROVIDER,
-  LISTING_KIND,
-  RATING_KIND,
-  LISTING_TAG,
-  RATING_TAG,
-  validateListingEvent,
-  validateVoteEvent,
-} from "../directory/nostr.ts";
+import { hashUrl } from "../domain/article.ts";
+import { normalizeUrl } from "../domain/url.ts";
+import { decodeArticle } from "../domain/article.ts";
+import { NostrDirectory } from "../directory/nostr.ts";
 import type {
   ArticleCopy,
   Listing,
   RatingTarget,
-  UploadReceipt,
+  PinReceipt,
+  IpfsMirror,
   Vote,
 } from "../domain/types.ts";
-export { PROVIDER };
+import { isSnapshotRoutes } from '../domain/routes.ts';
+import { isSnapshotCid } from "../domain/cid.ts";
 import type { NostrSocketConstructor } from "../directory/nostr.ts";
 
 export class NetworkError extends Schema.TaggedError<NetworkError>()(
@@ -34,94 +28,18 @@ const failure = (cause: unknown) =>
 const io = <A>(operation: (signal: AbortSignal) => PromiseLike<A>) =>
   Effect.tryPromise({ try: operation, catch: failure });
 const reject = (message: string) => Effect.fail(failure(new Error(message)));
-const encoder = new TextEncoder();
-const decoder = new TextDecoder("utf-8", { fatal: true });
 const HASH = /^[a-f0-9]{64}$/;
-const receiptSchema = Schema.Struct({
-  sha256: Schema.String,
-  size: Schema.Number,
-  type: Schema.String,
-  url: Schema.String,
-});
-/** Primal expects padded standard Base64 rather than current BUD-11 encoding. */
-export function createBlossomAuthorization(
-  secretKey: Uint8Array,
-  {
-    action,
-    blobHash,
-    now = Date.now(),
-  }: { action: string; blobHash: string; now?: number },
-) {
-  if (!["upload", "delete"].includes(action) || !HASH.test(blobHash))
-    throw new Error("Invalid blob authorization.");
-  const event = finalizeEvent(
-    {
-      kind: 24242,
-      created_at: Math.floor(now / 1000) - 1,
-      tags: [
-        ["t", action],
-        ["x", blobHash],
-        ["server", "blossom.primal.net"],
-        ["expiration", String(Math.floor(now / 1000) + 120)],
-      ],
-      content: `${action === "upload" ? "Upload" : "Delete"} one Ember Page article file`,
-    },
-    secretKey,
-  );
-  return `Nostr ${btoa(String.fromCharCode(...encoder.encode(JSON.stringify(event))))}`;
-}
 
-const responseBytes = Effect.fn("EmberNetwork.responseBytes")(function* (
-  response: Response,
-  maximum: number,
-  budget?: { remainingBytes: number },
-) {
-  const declared = response.headers.get("content-length");
-  if (declared && (!/^\d+$/.test(declared) || Number(declared) > maximum))
-    return yield* reject("The server response exceeds the file limit.");
-  if (!response.body)
-    return yield* reject("The server returned no readable file.");
-  const body = response.body;
-  return yield* Effect.scoped(
-    Effect.gen(function* () {
-      const reader = yield* Effect.acquireRelease(
-        Effect.try({ try: () => body.getReader(), catch: failure }),
-        (reader) =>
-          Effect.promise(async () => {
-            await reader.cancel().catch(() => {});
-            reader.releaseLock();
-          }),
-      );
-      const chunks: Uint8Array[] = [];
-      let total = 0;
-      while (true) {
-        const { value, done } = yield* io(() => reader.read());
-        if (done) break;
-        total += value.length;
-        if (budget) {
-          if (value.length > budget.remainingBytes)
-            return yield* reject(
-              "The article search reached its download limit.",
-            );
-          budget.remainingBytes -= value.length;
-        }
-        if (total > maximum)
-          return yield* reject("The server response exceeds the file limit.");
-        chunks.push(value);
-      }
-      const bytes = new Uint8Array(total);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.length;
-      }
-      return bytes;
-    }),
-  );
-});
+type IpfsFiles = {
+  pauseEffect():Effect.Effect<void,Error>;
+  forgetEffect(blobHash:string):Effect.Effect<void,Error>;
+  clearEffect():Effect.Effect<void,Error>;
+  mirrorEffect(copy:ArticleCopy):Effect.Effect<IpfsMirror,Error>;
+  readEffect(listing:Listing,options?:{budget?:{remainingBytes:number};routes?:readonly string[]}):Effect.Effect<ArticleCopy,Error>;
+};
 
 interface NetworkOptions {
-  fetch?: typeof globalThis.fetch;
+  ipfs: IpfsFiles;
   WebSocket?: NostrSocketConstructor;
   identity: () => Promise<Uint8Array>;
   now?: () => number;
@@ -130,237 +48,103 @@ interface NetworkOptions {
 
 /** One explicit provider and directory; acquisition scopes own cancellation. */
 export class EmberNetwork {
-  private readonly fetch: typeof globalThis.fetch;
+  private readonly ipfs: IpfsFiles;
   private readonly identity: () => Promise<Uint8Array>;
   private readonly now: () => number;
-  private readonly timeoutMs: number;
   private readonly directory: NostrDirectory;
   constructor({
-    fetch = globalThis.fetch.bind(globalThis),
+    ipfs,
     WebSocket = globalThis.WebSocket,
     identity,
     now = () => Date.now(),
     timeoutMs = 20_000,
   }: NetworkOptions) {
-    this.fetch = fetch;
+    this.ipfs = ipfs;
     this.identity = identity;
     this.now = now;
-    this.timeoutMs = timeoutMs;
-    this.directory = new NostrDirectory({ WebSocket, now });
+    this.directory = new NostrDirectory({ WebSocket, now, timeoutMs });
   }
-  private request = Effect.fn("EmberNetwork.request")(function* (
+  pauseEffect = Effect.fn("EmberNetwork.pause")(function* (
     this: EmberNetwork,
-    url: string,
-    init: RequestInit,
-    maximum: number,
-    timeoutMessage: string,
-    budget?: { remainingBytes: number },
-    requireSuccess = false,
-  ) {
-    return yield* Effect.scoped(
-      Effect.gen({ self: this }, function* () {
-        const controller = yield* Effect.acquireRelease(
-          Effect.sync(() => new AbortController()),
-          (controller) => Effect.sync(() => controller.abort()),
-        );
-        const response = yield* io(() =>
-          this.fetch(url, {
-            ...init,
-            credentials: "omit",
-            redirect: "error",
-            signal: controller.signal,
-          }),
-        );
-        if (requireSuccess && !response.ok)
-          return yield* reject(
-            `Article file is unavailable (${response.status}).`,
-          );
-        if (response.url && response.url !== url)
-          return yield* reject(
-            "The download went to an unexpected server and was stopped.",
-          );
-        const bytes = yield* responseBytes(response, maximum, budget);
-        return { response, bytes };
-      }).pipe(
-        Effect.timeoutOrElse({
-          duration: this.timeoutMs,
-          orElse: () => reject(timeoutMessage),
-        }),
-      ),
-    );
+  ): Effect.fn.Return<void,NetworkError> {
+    yield* this.ipfs.pauseEffect().pipe(Effect.mapError(failure));
   });
-  uploadEffect = Effect.fn("EmberNetwork.upload")(function* (
+  forgetEffect = Effect.fn("EmberNetwork.forget")(function* (
+    this: EmberNetwork, blobHash:string,
+  ): Effect.fn.Return<void,NetworkError> {
+    if (!HASH.test(blobHash)) return yield* reject("Invalid article file hash.");
+    yield* this.ipfs.forgetEffect(blobHash).pipe(Effect.mapError(failure));
+  });
+  clearPinsEffect = Effect.fn("EmberNetwork.clearPins")(function* (
+    this: EmberNetwork,
+  ): Effect.fn.Return<void,NetworkError> {
+    yield* this.ipfs.clearEffect().pipe(Effect.mapError(failure));
+  });
+  pinEffect = Effect.fn("EmberNetwork.pin")(function* (
     this: EmberNetwork,
     copy: ArticleCopy,
-  ): Effect.fn.Return<UploadReceipt, NetworkError> {
-    const verified: ArticleCopy = yield* io(() =>
-      decodeArticle(copy.bytes, { blobHash: copy.blobHash, now: this.now() }),
-    );
-    const secret = yield* io(() => this.identity());
-    const authorization = yield* Effect.try({
-      try: () =>
-        createBlossomAuthorization(secret, {
-          action: "upload",
-          blobHash: verified.blobHash,
-          now: this.now(),
-        }),
-      catch: failure,
-    });
-    const { response, bytes } = yield* this.request(
-      `${PROVIDER}/upload`,
-      {
-        method: "PUT",
-        body: Uint8Array.from(verified.bytes),
-        headers: {
-          "Content-Type": "application/json",
-          "X-SHA-256": verified.blobHash,
-          Authorization: authorization,
-        },
-      },
-      8192,
-      "Sharing took too long. Your copy is saved on this device.",
-    );
-    if (!response.ok) {
-      const text = yield* Effect.try({
-        try: () => decoder.decode(bytes),
-        catch: failure,
-      });
-      return yield* reject(
-        `Article upload failed (${response.status}): ${text.slice(0, 300)}`,
-      );
-    }
-    const raw: unknown = yield* Effect.try({
-      try: (): unknown => JSON.parse(decoder.decode(bytes)),
-      catch: failure,
-    });
-    const receipt = yield* Schema.decodeUnknownEffect(receiptSchema)(raw).pipe(
-      Effect.mapError(() =>
-        failure(
-          new Error("The upload receipt does not match this article file."),
-        ),
-      ),
-    );
-    if (
-      receipt.sha256 !== verified.blobHash ||
-      receipt.size !== verified.size ||
-      receipt.type !== "application/json" ||
-      receipt.url !== `${PROVIDER}/${verified.blobHash}.json`
-    )
-      return yield* reject(
-        "The upload receipt does not match this article file.",
-      );
-    return {
-      blobHash: verified.blobHash,
-      size: verified.size,
-      provider: PROVIDER,
-    };
+  ): Effect.fn.Return<PinReceipt, NetworkError> {
+    const verified = yield* io(() => decodeArticle(copy.bytes, {expected: copy, now: this.now()}));
+    const mirror = yield* this.ipfs.mirrorEffect(verified).pipe(Effect.mapError(failure));
+    if (!isSnapshotCid(mirror.cid) || !isSnapshotRoutes(mirror.routes) || mirror.size !== verified.size)
+      return yield* reject("The IPFS pin receipt does not match this article.");
+    return {cid: mirror.cid, routes: [...mirror.routes], blobHash: verified.blobHash, size: verified.size};
   });
   publishListingEffect = Effect.fn("EmberNetwork.publishListing")(function* (
     this: EmberNetwork,
     copy: ArticleCopy,
-    receipt: UploadReceipt,
-  ): Effect.fn.Return<Listing, NetworkError> {
+    receipt: PinReceipt,
+  ): Effect.fn.Return<Listing & {warning?: string}, NetworkError> {
     const verified: ArticleCopy = yield* io(() =>
-      decodeArticle(copy.bytes, { blobHash: copy.blobHash, now: this.now() }),
+      decodeArticle(copy.bytes, { expected: copy, now: this.now() }),
     );
     if (
       receipt?.blobHash !== verified.blobHash ||
       receipt.size !== verified.size ||
-      receipt.provider !== PROVIDER
+      !isSnapshotCid(receipt.cid) || !isSnapshotRoutes(receipt.routes)
     )
       return yield* reject(
-        "The saved upload receipt does not match this article.",
+        "The saved pin receipt does not match this article.",
       );
     const { content: _, ...article } = verified.article;
     const value = {
-      version: 1,
       ...article,
       urlHash: verified.urlHash,
       contentHash: verified.contentHash,
       blobHash: verified.blobHash,
       size: verified.size,
-      provider: PROVIDER,
+      cid: receipt.cid,
+      routes: [...receipt.routes],
     };
     const secret = yield* io(() => this.identity());
-    const event = yield* Effect.try({
-      try: () =>
-        finalizeEvent(
-          {
-            kind: LISTING_KIND,
-            created_at: Math.floor(this.now() / 1000),
-            tags: [
-              ["t", LISTING_TAG],
-              ["u", value.urlHash],
-              ["x", value.contentHash],
-            ],
-            content: JSON.stringify(value),
-          },
-          secret,
-        ),
-      catch: failure,
-    });
-    const listing: Listing | null = yield* io(() =>
-      validateListingEvent(event, { now: this.now() }),
-    );
-    if (!listing)
-      return yield* reject("This article cannot be listed publicly.");
-    yield* io((signal) => this.directory.publish(event, signal));
-    return listing;
+    return yield* this.directory.publishListingEffect(value, secret).pipe(Effect.mapError(failure));
   });
   readArticleEffect = Effect.fn("EmberNetwork.readArticle")(function* (
     this: EmberNetwork,
     listing: Listing,
-    { budget }: { budget?: { remainingBytes: number } } = {},
+    { budget, routes }: { budget?: { remainingBytes: number }; routes?: readonly string[] } = {},
   ): Effect.fn.Return<ArticleCopy, NetworkError> {
-    if (
-      listing?.provider !== PROVIDER ||
-      !HASH.test(listing.blobHash) ||
-      !Number.isSafeInteger(listing.size) ||
-      listing.size < 1 ||
-      listing.size > MAX_ARTICLE_BYTES
-    )
-      return yield* reject("Invalid article file reference.");
-    if (
-      budget &&
-      (!Number.isSafeInteger(budget.remainingBytes) ||
-        budget.remainingBytes < listing.size)
-    )
-      return yield* reject("The article search reached its download limit.");
-    const hash = listing.blobHash;
-    const url = `https://media.primal.net/uploads2/${hash[0]}/${hash.slice(1, 3)}/${hash.slice(3, 5)}/${hash}.json`;
-    const { bytes } = yield* this.request(
-      url,
-      {},
-      Math.min(MAX_ARTICLE_BYTES, listing.size),
-      "Article download timed out.",
-      budget,
-      true,
-    );
-    if (bytes.length !== listing.size)
-      return yield* reject("The article file size does not match its listing.");
-    const copy: ArticleCopy = yield* io(() =>
-      decodeArticle(bytes, { blobHash: hash, now: this.now() }),
-    );
-    for (const field of ["urlHash", "contentHash", "blobHash", "size"] as const)
-      if (copy[field] !== listing[field])
-        return yield* reject("The article file does not match its listing.");
-    for (const field of ["url", "title", "byline", "capturedAt"] as const)
-      if (copy.article[field] !== listing[field])
-        return yield* reject(
-          "The article metadata does not match its listing.",
-        );
-    return copy;
+    return yield* this.ipfs.readEffect(listing, {budget,...(routes ? {routes} : {})}).pipe(Effect.mapError(failure));
   });
   queryListingsEffect = Effect.fn("EmberNetwork.queryListings")(function* (
     this: EmberNetwork,
-  ): Effect.fn.Return<Listing[], NetworkError> {
-    return yield* io((signal) => this.directory.queryListings(signal));
+    url?: string,
+  ): Effect.fn.Return<{records: Listing[]; warning?: string}, NetworkError> {
+    const normalized = url === undefined ? undefined : yield* Effect.try({try: () => normalizeUrl(url), catch: failure});
+    const urlHash = normalized === undefined ? undefined : yield* io(() => hashUrl(normalized));
+    const result = yield* io((signal) => this.directory.queryListings(signal, urlHash));
+    const partial = result.diagnostics.relays?.some(relay => relay.outcome === "failure");
+    return {records: result.records.filter(listing => normalized === undefined || listing.url === normalized),
+      ...(partial ? {warning: "Some directories are unavailable. Results may be incomplete."} : {})};
   });
   queryVotesEffect = Effect.fn("EmberNetwork.queryVotes")(function* (
     this: EmberNetwork,
     targets: RatingTarget[],
-  ): Effect.fn.Return<Vote[], NetworkError> {
-    return yield* io((signal) => this.directory.queryVotes(targets, signal));
+  ): Effect.fn.Return<{records: Vote[]; warning?: string}, NetworkError> {
+    const result = yield* io((signal) => this.directory.queryVotes(targets, signal));
+    const partial = result.diagnostics.relays?.some(relay => relay.outcome === "failure");
+    return {records: result.records,
+      ...(partial ? {warning: "Some ratings are unavailable. Rankings may be incomplete."} : {})};
   });
   publishVoteEffect = Effect.fn("EmberNetwork.publishVote")(function* (
     this: EmberNetwork,
@@ -374,31 +158,6 @@ export class EmberNetwork {
     )
       return yield* reject("Invalid rating.");
     const secret = yield* io(() => this.identity());
-    const event = yield* Effect.try({
-      try: () =>
-        finalizeEvent(
-          {
-            kind: RATING_KIND,
-            created_at: Math.floor(this.now() / 1000),
-            tags: [
-              ["t", RATING_TAG],
-              ["u", value.urlHash],
-              ["x", value.contentHash],
-            ],
-            content: JSON.stringify({
-              version: 1,
-              urlHash: value.urlHash,
-              contentHash: value.contentHash,
-              value: value.value,
-            }),
-          },
-          secret,
-        ),
-      catch: failure,
-    });
-    const vote: Vote | null = validateVoteEvent(event, { now: this.now() });
-    if (!vote) return yield* reject("Invalid signed rating.");
-    yield* io((signal) => this.directory.publish(event, signal));
-    return vote;
+    return yield* this.directory.publishVoteEffect(value, secret).pipe(Effect.mapError(failure));
   });
 }

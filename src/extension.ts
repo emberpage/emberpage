@@ -1,12 +1,15 @@
 import { Effect, Predicate, Schema } from "effect";
 import { LocalVault, ShareReceipts } from "./storage/indexeddb.ts";
+import { IpfsReservations } from "./storage/ipfs.ts";
 import { VoteLedger } from "./storage/votes.ts";
 import { CatalogLedger } from "./storage/catalog.ts";
+import { BrowserMeshClient } from './platform/mesh.ts';
 import { EmberNetwork } from "./transport/network.ts";
 import { ArticleArchive } from "./application/archive.ts";
 import { createCaptureModule } from "./platform/capture.ts";
 import { installationIdentity } from "./platform/identity.ts";
 import { createArticleInspector } from "./platform/inspection.ts";
+import { ensureOffscreen } from './platform/offscreen-document.ts';
 
 class BackgroundError extends Schema.TaggedError<BackgroundError>()(
   "BackgroundError",
@@ -44,29 +47,33 @@ const messageSchema = Schema.Union([
     textOnly: Schema.optionalKey(Schema.Boolean),
     share: Schema.optionalKey(Schema.Boolean),
   }),
-  Schema.Struct({ ...command("RETRY_SHARE"), id }),
   Schema.Struct({ ...command("DISCARD_SHARE"), id }),
-  Schema.Struct(command("CATALOG")),
-  Schema.Struct(command("LOCAL_CATALOG")),
+  Schema.Struct({...command("CATALOG"), url: Schema.String}),
+  Schema.Struct({...command("LOCAL_CATALOG"), url: Schema.String}),
   Schema.Struct({ ...command("RATE"), id, value: Schema.Literals([1, -1]) }),
   Schema.Struct({ ...command("RATINGS"), id }),
-  Schema.Struct(command("LIBRARY")),
+  Schema.Struct({...command("LIBRARY"), url: Schema.optionalKey(Schema.String)}),
   Schema.Struct({ ...command("READ"), id }),
+  Schema.Struct({ ...command("CONTRIBUTE"), id }),
   Schema.Struct({ ...command("OPEN_COPY"), id }),
   Schema.Struct({
     ...command("DELETE"),
     id,
-    source: Schema.Literals(["reader", "writer"]),
+    source: Schema.Literals(["reader", "writer", "mesh"]),
   }),
   Schema.Struct(command("CLEAR")),
+  Schema.Struct(command("STOP_MESH")),
 ]);
 type Message = typeof messageSchema.Type;
 /** WXT calls this explicitly; importing workflows never registers Chrome listeners. */
 export function startBackground() {
   const inspect = createArticleInspector();
+  const mesh = new BrowserMeshClient();
+  const contributions = new IpfsReservations();
   const archive = new ArticleArchive({
-    network: new EmberNetwork({ identity: installationIdentity }),
-    writer: new LocalVault(),
+    network: new EmberNetwork({ identity: installationIdentity, ipfs: mesh }),
+    contributions,
+    writer: new LocalVault({retainedFiles: async () => (await contributions.list()).map(record => record.blobHash)}),
     reader: new LocalVault({ name: "emberpage-reader-v1" }),
     catalog: new CatalogLedger(),
     votes: new VoteLedger(),
@@ -110,21 +117,21 @@ export function startBackground() {
           share: message.share,
           textOnly: message.textOnly,
         });
-      case "RETRY_SHARE":
-        return yield* archive.retryEffect(message.id);
       case "DISCARD_SHARE":
         yield* archive.discardShareEffect(message.id);
         return true;
       case "CATALOG":
-        return yield* archive.browseEffect();
+        return yield* archive.browseEffect(message.url);
       case "LOCAL_CATALOG":
-        return yield* archive.localCatalogEffect();
+        return yield* archive.localCatalogEffect(message.url);
       case "RATE":
         return yield* archive.rateEffect(message.id, message.value);
       case "RATINGS":
         return yield* archive.ratingsEffect(message.id);
       case "LIBRARY":
-        return yield* archive.libraryEffect();
+        return yield* archive.libraryEffect(message.url);
+      case "CONTRIBUTE":
+        return yield* archive.contributeEffect(message.id);
       case "READ":
         return yield* archive.readEffect(message.id);
       case "OPEN_COPY":
@@ -136,6 +143,9 @@ export function startBackground() {
         return true;
       case "CLEAR":
         yield* archive.clearEffect();
+        return true;
+      case "STOP_MESH":
+        yield* archive.pauseEffect();
         return true;
       case "CAPTURE_IMAGE_PIXELS":
         return yield* reject("Image capture requires its page session.");
@@ -176,5 +186,12 @@ export function startBackground() {
     return true;
   };
   chrome.runtime.onMessage.addListener(listener);
-  return () => chrome.runtime.onMessage.removeListener(listener);
+  const resumeContribution = () => {
+    Effect.runPromise(ensureOffscreen()).catch(error => console.warn('Ember Page worker could not open:', error));
+  };
+  chrome.runtime.onStartup.addListener(resumeContribution);
+  return () => {
+    chrome.runtime.onMessage.removeListener(listener);
+    chrome.runtime.onStartup.removeListener(resumeContribution);
+  };
 }

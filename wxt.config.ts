@@ -23,7 +23,7 @@ export default defineConfig({
     },
     content_security_policy: {
       extension_pages:
-        "script-src 'self'; object-src 'none'; connect-src https://blossom.primal.net https://media.primal.net wss://relay.primal.net; img-src 'self' data:; style-src 'self'; font-src 'self';",
+        "script-src 'self'; object-src 'none'; connect-src https: wss:; img-src 'self' data:; style-src 'self'; font-src 'self';",
     },
     icons: {
       16: "icons/icon-16.png",

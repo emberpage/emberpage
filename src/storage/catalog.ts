@@ -1,3 +1,5 @@
+import { isSnapshotRoutes } from '../domain/routes.ts';
+import { isSnapshotCid } from '../domain/cid.ts';
 import { Predicate } from 'effect';
 type Listing = import('../domain/types.ts').Listing;
 import { hashUrl, MAX_ARTICLE_BYTES } from '../domain/article.ts';
@@ -42,7 +44,8 @@ export async function validateCatalogEntry(
       entry.title.length > 500 ||
       typeof entry.byline !== 'string' ||
       entry.byline.length > 500 ||
-      entry.provider !== 'https://blossom.primal.net' ||
+      !isSnapshotCid(entry.cid) ||
+      !isSnapshotRoutes(entry.routes) ||
       normalizeUrl(entry.url) !== entry.url ||
       entry.url.length > 4096
     )
@@ -89,7 +92,7 @@ export class CatalogLedger {
       let bytes: number = 0;
       for (const entry of [...byId.values()]
         .filter(
-          (entry: Listing) => entry.createdAt > this.now() - LISTING_WINDOW_MS
+          (entry: Listing) => isSnapshotCid(entry.cid) && isSnapshotRoutes(entry.routes) && entry.createdAt > this.now() - LISTING_WINDOW_MS
         )
         .sort(newest)) {
         const size: number = recordBytes(entry);
@@ -118,7 +121,8 @@ export class CatalogLedger {
           title: entry.title,
           byline: entry.byline,
           capturedAt: entry.capturedAt,
-          provider: entry.provider
+          cid: entry.cid,
+          routes: [...entry.routes]
         });
     await this.update(valid);
     return valid.length;

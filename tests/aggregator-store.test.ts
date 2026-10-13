@@ -160,3 +160,17 @@ await test('journal and trend counts retain bounded diagnostics for seven days w
       }
     })
   ));
+
+await test('obsolete provider metadata is pruned without crowding out current IPFS listings', () =>
+  Effect.runPromise(Effect.promise(async () => {
+    const now = Date.now();
+    const store = new AggregatorStore({now:()=>now,maxArticles:1});
+    try {
+      const current = await listing(now);
+      const {cid:_cid,...fields} = current;
+      const obsolete = {...fields,id:'9'.repeat(64),createdAt:now+1,provider:'https://blossom.primal.net'};
+      store.db.prepare('INSERT INTO directory VALUES(?,?,?)').run(obsolete.id,obsolete.createdAt,JSON.stringify(obsolete));
+      await store.commitMetadata([current],[]);
+      assert.deepEqual(store.listArticles(),[current]);
+    } finally {store.close();}
+  })));

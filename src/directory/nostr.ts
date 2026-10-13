@@ -1,28 +1,27 @@
 import { Effect, Schema } from 'effect';
 import type { Listing, Vote, RatingTarget } from '../domain/types.ts';
 import type { Event } from 'nostr-tools';
-import { verifyEvent } from 'nostr-tools/pure';
+import { verifyEvent, finalizeEvent } from 'nostr-tools/pure';
 import { normalizeUrl } from '../domain/url.ts';
 import { hashUrl, MAX_ARTICLE_BYTES } from '../domain/article.ts';
+import { isSnapshotRoutes } from '../domain/routes.ts';
+import { isSnapshotCid } from '../domain/cid.ts';
 
-const RELAY = 'wss://relay.primal.net';
-export const PROVIDER = 'https://blossom.primal.net';
+export const RELAYS = Object.freeze(['wss://relay.primal.net', 'wss://relay.damus.io', 'wss://nos.lol'] as const);
 export const LISTING_KIND = 8965;
 export const RATING_KIND = 8966;
 // Ember Page uses its own discovery namespace.
-export const LISTING_TAG = 'emberpage-v1-listing';
+export const LISTING_TAG = 'emberpage-v2-listing';
 export const RATING_TAG = 'emberpage-v1-rating';
 const METADATA_BYTES = 8192;
 export const DISCOVERY_WINDOW_MS = 30 * 86400_000;
 const HASH = /^[a-f0-9]{64}$/;
 const encoder = new TextEncoder();
 
-
-
-
-
-
-type QueryDiagnostics = {action:'listings'|'ratings';received:number;accepted:number;rejected:number;duplicates:number;reasons:{invalid:number;target?:number};observedAt?:number};
+export type RelayOutcome = {relay:string;outcome:'success'|'failure';error?:'timeout'|'network'|'canceled'};
+export type PublishReceipt = {accepted:true;relays:RelayOutcome[];warning?:string};
+type QueryDiagnostics = {action:'listings'|'ratings';received:number;accepted:number;rejected:number;duplicates:number;reasons:{invalid:number;target?:number};observedAt?:number;relays?:RelayOutcome[]};
+type MetadataQuery<T> = {records: T[]; diagnostics: QueryDiagnostics};
 interface NostrSocket {
   readyState:number;
   send(data:string):void;
@@ -34,7 +33,7 @@ interface NostrSocket {
 }
 export type NostrSocketConstructor = new (url:string) => NostrSocket;
 type DirectoryOptions = {WebSocket?:NostrSocketConstructor;now?:()=>number;timeoutMs?:number};
-type ExchangeOptions = {eventId?:string;limit?:number;signal?:AbortSignal};
+type ExchangeOptions = {relay?:string;eventId?:string;limit?:number;signal?:AbortSignal};
 type ExchangeResult = unknown[]|{accepted:true};
 const decodeRecord = Schema.decodeUnknownSync(Schema.Record(Schema.String,Schema.Unknown));
 
@@ -77,11 +76,10 @@ function signedContent(event:unknown, kind:number, namespace:string, now:number)
   const parsedContent: unknown = JSON.parse(wire.content);
   if (typeof parsedContent !== 'object' || parsedContent === null || Array.isArray(parsedContent)) return null;
   const content = decodeRecord(parsedContent);
-  if (content.version !== 1
+  if (content.version !== (kind === LISTING_KIND ? 2 : 1)
     || content.urlHash !== tags.u || content.contentHash !== tags.x) return null;
   return { wire, content, urlHash:tags.u,contentHash:tags.x };
 }
-
 
 export async function validateListingEvent(event:unknown, { now = Date.now() }: {now?:number} = {}): Promise<Listing|null> {
   try {
@@ -94,13 +92,12 @@ export async function validateListingEvent(event:unknown, { now = Date.now() }: 
       || typeof value.title !== 'string' || !value.title.trim() || value.title.length > 500
       || typeof value.byline !== 'string' || value.byline.length > 500
       || typeof value.capturedAt !== 'number' || !Number.isSafeInteger(value.capturedAt) || value.capturedAt < 0 || value.capturedAt > now + 60_000
-      || value.provider !== PROVIDER) return null;
+      || typeof value.cid !== 'string' || !isSnapshotCid(value.cid) || !isSnapshotRoutes(value.routes)) return null;
     return { id: wire.id, pubkey: wire.pubkey, createdAt: wire.created_at * 1000,
       url: value.url, urlHash: signed.urlHash, contentHash: signed.contentHash, blobHash: value.blobHash,
-      size: value.size, title: value.title, byline: value.byline, capturedAt: value.capturedAt, provider: PROVIDER };
+      size: value.size, title: value.title, byline: value.byline, capturedAt: value.capturedAt, cid: value.cid, routes: [...value.routes] };
   } catch { return null; }
 }
-
 
 export function validateVoteEvent(event:unknown, { now = Date.now() }: {now?:number} = {}): Vote|null {
   try {
@@ -113,30 +110,29 @@ export function validateVoteEvent(event:unknown, { now = Date.now() }: {now?:num
   } catch { return null; }
 }
 
-class DirectoryError extends Error {
-  
-  constructor(readonly code:'timeout'|'network'|'canceled',message:string) { super(message); this.name = 'DirectoryError';  }
+class DirectoryError extends Schema.TaggedError<DirectoryError>()('DirectoryError', {
+  code: Schema.Literals(['timeout', 'network', 'canceled']), message: Schema.String,
+}) {
 }
 
-/** Bounded, one-shot Nostr operations. This module needs no Chrome or signing key for reads. */
+const directoryFailure = (cause: unknown) => cause instanceof DirectoryError ? cause
+  : new DirectoryError({code: 'network', message: cause instanceof Error ? cause.message : 'The directory operation failed.'});
+
 export class NostrDirectory {
   readonly WebSocket: NostrSocketConstructor;
   readonly now:()=>number;
   readonly timeoutMs:number;
-  lastQuery:QueryDiagnostics|null;
   
   constructor({ WebSocket = globalThis.WebSocket, now = () => Date.now(), timeoutMs = 12_000 }:DirectoryOptions = {}) {
-    this.WebSocket = WebSocket; this.now = now; this.timeoutMs = timeoutMs;  this.lastQuery = null;
+    this.WebSocket = WebSocket; this.now = now; this.timeoutMs = timeoutMs;
   }
-  
-  
-  
+
   exchange(message:unknown[],options:ExchangeOptions & {eventId:string}):Promise<{accepted:true}>;
   exchange(message:unknown[],options?:ExchangeOptions & {eventId?:undefined}):Promise<unknown[]>;
   exchange(message:unknown[],options:ExchangeOptions = {}):Promise<ExchangeResult> {
     return Effect.runPromise(this.exchangeEffect(message,options));
   }
-  exchangeEffect(message:unknown[], {eventId,limit=1,signal}:ExchangeOptions = {}) {
+  exchangeEffect(message:unknown[], {eventId,limit=1,signal,relay=RELAYS[0]}:ExchangeOptions = {}) {
     return Effect.callback<ExchangeResult,DirectoryError>(resume => {
       
       let socket: NostrSocket|undefined;
@@ -153,23 +149,23 @@ export class NostrDirectory {
         } catch { /* Completion is final even if a closing socket refuses CLOSE. */ }
         resume(error ? Effect.fail(error) : Effect.succeed(result));
       };
-      const timer = setTimeout(() => finish(new DirectoryError('timeout', 'The article directory took too long to respond. Try again.')), this.timeoutMs);
-      const abort = () => finish(new DirectoryError('canceled', 'The article directory request was canceled.'));
+      const timer = setTimeout(() => finish(new DirectoryError({code: 'timeout', message: 'The article directory took too long to respond. Try again.'})), this.timeoutMs);
+      const abort = () => finish(new DirectoryError({code: 'canceled', message: 'The article directory request was canceled.'}));
       if (signal?.aborted) { abort(); return; }
       signal?.addEventListener('abort', abort, { once: true });
-      try { socket = new this.WebSocket(RELAY); }
-      catch { finish(new DirectoryError('network', 'Could not connect to the article directory. Check your connection and try again.')); return; }
+      try { socket = new this.WebSocket(relay); }
+      catch { finish(new DirectoryError({code: 'network', message: 'Could not connect to the article directory. Check your connection and try again.'})); return; }
       socket.onopen = () => {
         try { socket?.send(JSON.stringify(message)); }
-        catch { finish(new DirectoryError('network', 'Could not send the request to the article directory. Try again.')); }
+        catch { finish(new DirectoryError({code: 'network', message: 'Could not send the request to the article directory. Try again.'})); }
       };
-      socket.onerror = () => finish(new DirectoryError('network', 'The connection to the article directory failed. Try again.'));
-      socket.onclose = () => finish(new DirectoryError('network', 'The article directory disconnected before finishing. Try again.'));
+      socket.onerror = () => finish(new DirectoryError({code: 'network', message: 'The connection to the article directory failed. Try again.'}));
+      socket.onclose = () => finish(new DirectoryError({code: 'network', message: 'The article directory disconnected before finishing. Try again.'}));
       
       socket.onmessage = ({ data }: {data:unknown}) => {
         if (settled) return;
         inspected++;
-        if (inspected > limit + 32) { finish(new DirectoryError('network', 'The article directory sent too much data. The request was stopped.')); return; }
+        if (inspected > limit + 32) { finish(new DirectoryError({code: 'network', message: 'The article directory sent too much data. The request was stopped.'})); return; }
         try {
           if (typeof data !== 'string' && !(data instanceof ArrayBuffer) && !ArrayBuffer.isView(data)) return;
           const text = typeof data === 'string' ? data : new TextDecoder().decode(data);
@@ -178,13 +174,13 @@ export class NostrDirectory {
           if (!Array.isArray(parsedFrame)) return;
           const frame = parsedFrame as unknown[];
           if (eventId && frame[0] === 'OK' && frame[1] === eventId) {
-            finish(frame[2] === true ? null : new DirectoryError('network', `The article directory rejected this update: ${typeof frame[3] === 'string' && frame[3] ? frame[3].slice(0,500) : 'no reason'}`), { accepted: true });
+            finish(frame[2] === true ? null : new DirectoryError({code: 'network', message: `The article directory rejected this update: ${typeof frame[3] === 'string' && frame[3] ? frame[3].slice(0,500) : 'no reason'}`}), { accepted: true });
           } else if (!eventId && frame[1] === message[1]) {
             if (frame[0] === 'EVENT') {
               if (encoder.encode(JSON.stringify(frame[2])).length <= METADATA_BYTES) events.push(frame[2]);
               if (events.length >= limit) finish(null, events);
             } else if (frame[0] === 'EOSE') finish(null, events);
-            else if (frame[0] === 'CLOSED') finish(new DirectoryError('network', `The article directory refused this request: ${typeof frame[2] === 'string' && frame[2] ? frame[2].slice(0,500) : 'no reason'}`));
+            else if (frame[0] === 'CLOSED') finish(new DirectoryError({code: 'network', message: `The article directory refused this request: ${typeof frame[2] === 'string' && frame[2] ? frame[2].slice(0,500) : 'no reason'}`}));
           }
         } catch { /* Ignore malformed remote frames within the response/time budget. */ }
       };
@@ -192,14 +188,78 @@ export class NostrDirectory {
     });
   }
   
-  publish(event:Event, signal:AbortSignal|undefined = undefined) {
+  readonly #sign = Effect.fn('Directory.sign')(function* (
+    this: NostrDirectory, kind: number, namespace: string,
+    value: RatingTarget & Record<string, unknown>, secret: Uint8Array,
+  ) {
+    return yield* Effect.try({try: () => finalizeEvent({
+      kind, created_at: Math.floor(this.now() / 1000),
+      tags: [['t', namespace], ['u', value.urlHash], ['x', value.contentHash]],
+      content: JSON.stringify(value),
+    }, secret), catch: directoryFailure});
+  });
+
+  readonly publishListingEffect = Effect.fn('Directory.publishListing')(function* (
+    this: NostrDirectory, metadata: Omit<Listing, 'id' | 'pubkey' | 'createdAt' | 'listedAt'>,
+    secret: Uint8Array,
+  ) {
+    const {url, title, byline, capturedAt, urlHash, contentHash, blobHash, size, cid, routes} = metadata;
+    const event = yield* this.#sign(LISTING_KIND, LISTING_TAG, {
+      version: 2, url, title, byline, capturedAt, urlHash, contentHash, blobHash, size, cid, routes,
+    }, secret);
+    const listing = yield* Effect.tryPromise({try: () => validateListingEvent(event, {now: this.now()}), catch: directoryFailure});
+    if (!listing) return yield* new DirectoryError({code: 'network', message: 'This article cannot be listed publicly.'});
+    const publication = yield* Effect.tryPromise({try: signal => this.publish(event, signal), catch: directoryFailure});
+    return {...listing, ...(publication.warning ? {warning: publication.warning} : {})};
+  });
+
+  readonly publishVoteEffect = Effect.fn('Directory.publishVote')(function* (
+    this: NostrDirectory, value: RatingTarget & {value: number}, secret: Uint8Array,
+  ) {
+    const event = yield* this.#sign(RATING_KIND, RATING_TAG, {
+      version: 1, urlHash: value.urlHash, contentHash: value.contentHash, value: value.value,
+    }, secret);
+    const vote = validateVoteEvent(event, {now: this.now()});
+    if (!vote) return yield* new DirectoryError({code: 'network', message: 'Invalid signed rating.'});
+    yield* Effect.tryPromise({try: signal => this.publish(event, signal), catch: directoryFailure});
+    return vote;
+  });
+
+  async publish(event:Event, signal:AbortSignal|undefined = undefined):Promise<PublishReceipt> {
     if (encoder.encode(JSON.stringify(['EVENT', event])).length > METADATA_BYTES) throw new Error('The article listing is too large to share.');
-    return this.exchange(['EVENT', event], { eventId: event.id, signal });
+    const results = await Effect.runPromise(this.exchangeRelaysEffect(['EVENT',event],{eventId:event.id,signal}));
+    const relays = this.relayOutcomes(results);
+    if (!relays.some(result => result.outcome === 'success')) this.throwFailure(results);
+    return {accepted:true,relays,...(relays.some(result => result.outcome === 'failure') ? {warning:'Public listing saved. Some directory relays could not be updated.'} : {})};
   }
-  
-  async queryListings(signal:AbortSignal|undefined = undefined):Promise<Listing[]> {
+
+  private exchangeRelaysEffect(message:unknown[],options:ExchangeOptions) {
+    return Effect.all(RELAYS.map(relay => this.exchangeEffect(message,{...options,relay}).pipe(
+      Effect.map(value => ({status:'fulfilled' as const,value})),
+      Effect.catch(reason => Effect.succeed({status:'rejected' as const,reason}))
+    )),{concurrency:3});
+  }
+
+  private relayOutcomes(results:readonly PromiseSettledResult<unknown>[]):RelayOutcome[] {
+    return results.map((result,index) => ({relay:(RELAYS[index] ?? RELAYS[0]),outcome:result.status === 'fulfilled' ? 'success' : 'failure',...(result.status === 'rejected' ? {error:result.reason instanceof DirectoryError ? result.reason.code : 'network' as const} : {})}));
+  }
+
+  private throwFailure(results:readonly PromiseSettledResult<unknown>[]):never {
+    const failure = results.find(result => result.status === 'rejected');
+    throw failure?.status === 'rejected' && failure.reason instanceof Error ? failure.reason : new Error('No article directory relay responded.');
+  }
+
+  private async queryRelays(message:unknown[], options:ExchangeOptions & {eventId?:undefined}) {
+    const results = await Effect.runPromise(this.exchangeRelaysEffect(message,options));
+    const relays = this.relayOutcomes(results);
+    if (options.signal?.aborted || !relays.some(result => result.outcome === 'success')) this.throwFailure(results);
+    return {events:results.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : []),relays};
+  }
+
+  async queryListings(signal:AbortSignal|undefined = undefined, urlHash?: string):Promise<MetadataQuery<Listing>> {
+    if (urlHash !== undefined && !HASH.test(urlHash)) throw new Error("Invalid article URL hash.");
     const now = this.now();
-    const events = await this.exchange(['REQ', crypto.randomUUID(), { kinds: [LISTING_KIND], '#t': [LISTING_TAG],
+    const {events,relays} = await this.queryRelays(['REQ', crypto.randomUUID(), { kinds: [LISTING_KIND], '#t': [LISTING_TAG], ...(urlHash === undefined ? {} : {'#u':[urlHash]}),
       since: Math.floor((now - DISCOVERY_WINDOW_MS) / 1000), until: Math.floor((now + 60_000) / 1000), limit: 100 }], { limit: 100, signal });
     
     const records = new Map<string,Listing>();
@@ -207,23 +267,22 @@ export class NostrDirectory {
     const diagnostics: QueryDiagnostics = { action: 'listings', received: events.length, accepted: 0, rejected: 0, duplicates: 0, reasons: { invalid: 0 } };
     for (const event of events) {
       const listing = await validateListingEvent(event, { now });
-      if (!listing) { diagnostics.rejected++; diagnostics.reasons.invalid++; }
+      if (!listing || (urlHash !== undefined && listing.urlHash !== urlHash)) { diagnostics.rejected++; diagnostics.reasons.invalid++; }
       else if (records.has(listing.id)) diagnostics.duplicates++;
       else { records.set(listing.id, listing); diagnostics.accepted++; }
     }
-    this.lastQuery = { ...diagnostics, observedAt: this.now() };
-    return [...records.values()].sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id)).slice(0, 100);
+    return {records: [...records.values()].sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id)).slice(0, 100),
+      diagnostics: {...diagnostics, relays, observedAt: this.now()}};
   }
   
-  async queryVotes(targets:RatingTarget[], signal:AbortSignal|undefined = undefined):Promise<Vote[]> {
+  async queryVotes(targets:RatingTarget[], signal:AbortSignal|undefined = undefined):Promise<MetadataQuery<Vote>> {
     if (!Array.isArray(targets) || targets.length > 100 || targets.some(target => !HASH.test(target?.urlHash) || !HASH.test(target?.contentHash))) throw new Error('Invalid rating targets.');
     const now = this.now();
     if (!targets.length) {
-      this.lastQuery = {action:'ratings',received:0,accepted:0,rejected:0,duplicates:0,reasons:{invalid:0,target:0},observedAt:now};
-      return [];
+      return {records: [], diagnostics: {action:'ratings',received:0,accepted:0,rejected:0,duplicates:0,reasons:{invalid:0,target:0},observedAt:now}};
     }
     const wanted = new Set(targets.map(target => `${target.urlHash}:${target.contentHash}`));
-    const events = await this.exchange(['REQ', crypto.randomUUID(), { kinds: [RATING_KIND], '#t': [RATING_TAG],
+    const {events,relays} = await this.queryRelays(['REQ', crypto.randomUUID(), { kinds: [RATING_KIND], '#t': [RATING_TAG],
       '#u': [...new Set(targets.map(target => target.urlHash))], '#x': [...new Set(targets.map(target => target.contentHash))],
       since: Math.floor((now - DISCOVERY_WINDOW_MS) / 1000), until: Math.floor((now + 60_000) / 1000), limit: 5000 }], { limit: 5000, signal });
     
@@ -237,7 +296,7 @@ export class NostrDirectory {
       else if (records.has(vote.id)) diagnostics.duplicates++;
       else { records.set(vote.id, vote); diagnostics.accepted++; }
     }
-    this.lastQuery = { ...diagnostics, observedAt: this.now() };
-    return [...records.values()];
+    return {records: [...records.values()].sort((a,b)=>b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,5000),
+      diagnostics: {...diagnostics, relays, observedAt: this.now()}};
   }
 }

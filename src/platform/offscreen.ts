@@ -20,4 +20,7 @@ function inspectMessage(message: unknown, sender: chrome.runtime.MessageSender,
     respond({ ok: false, error: errorMessage(error) });
   }
 }
-chrome.runtime.onMessage.addListener(inspectMessage);
+export function startInspection() {
+  chrome.runtime.onMessage.addListener(inspectMessage);
+  return () => chrome.runtime.onMessage.removeListener(inspectMessage);
+}

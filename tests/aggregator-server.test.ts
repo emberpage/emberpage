@@ -7,11 +7,11 @@ import {once} from 'node:events';
 import {request as httpRequest} from 'node:http';
 import {createAggregatorServer} from '../aggregator/server.ts';
 import {AggregatorStore} from '../aggregator/store.ts';
-import {listing} from './aggregator-fixture.ts';
+import {listing,queryResult} from './aggregator-fixture.ts';
 
 async function fixture(t:TestContext,overrides:Partial<MetadataDirectory>={}){
   const store=new AggregatorStore(),item=await listing(),calls:string[]=[];
-  const directory:MetadataDirectory={queryListings(){calls.push('listings');return Promise.resolve([item]);},queryVotes(){calls.push('votes');return Promise.resolve([]);},...overrides};
+  const directory:MetadataDirectory={queryListings(){calls.push('listings');return Promise.resolve(queryResult([item]));},queryVotes(){calls.push('votes');return Promise.resolve(queryResult([]));},...overrides};
   const server=createAggregatorServer({store,directory});server.listen(0,'127.0.0.1');await once(server,'listening');
   const address=server.address();assert(address && typeof address !== 'string');
   const origin=`http://127.0.0.1:${address.port}`;
@@ -41,7 +41,7 @@ await test('refresh requires loopback Host, matching Origin, explicit header and
 
 await test('concurrent refresh is rejected and failed query preserves the previous committed metadata',async t=>{
   const {promise:gate,resolve:release}=Promise.withResolvers<void>(),{promise:ready,resolve:started}=Promise.withResolvers<void>();
-  const {store,item,directory,origin,refresh}=await fixture(t,{async queryListings(){started();await gate;return [item];}});
+  const {store,item,directory,origin,refresh}=await fixture(t,{async queryListings(){started();await gate;return queryResult([item]);}});
   const old={...item,id:'1'.repeat(64),title:'Earlier metadata'};await store.commitMetadata([old],[]);
   const pending=refresh();await ready;assert.equal((await refresh()).status,409);
   assert.match(JSON.stringify(await (await fetch(origin+'/api/articles')).json()),/Earlier metadata/);release();assert.equal((await pending).status,200);

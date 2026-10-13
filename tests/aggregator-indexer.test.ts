@@ -1,11 +1,11 @@
-import type {MetadataDirectory,QueryDiagnostics} from '../aggregator/types.ts';
+import type {MetadataDirectory} from '../aggregator/types.ts';
 import type {RatingTarget} from '../src/domain/types.ts';
 import test from "node:test";
 import { Effect, Predicate } from "effect";
 import assert from "node:assert/strict";
 import { AggregatorStore } from "../aggregator/store.ts";
 import { MetadataIndexer, rankedArticles } from "../aggregator/indexer.ts";
-import { listing, vote } from "./aggregator-fixture.ts";
+import { listing, vote, queryResult } from "./aggregator-fixture.ts";
 
 await test("indexer uses only metadata interface, records rejected counts and preserves prior state on network failure", async () => {
   const now = Date.now(),
@@ -13,27 +13,16 @@ await test("indexer uses only metadata interface, records rejected counts and pr
   try {
     const item = await listing(now);
     const calls: Array<string|readonly RatingTarget[]> = [];
-    const directory: MetadataDirectory & {lastQuery:QueryDiagnostics|null} = {
-      lastQuery: null,
+    const directory: MetadataDirectory = {
       queryListings() {
         calls.push("listings");
-        this.lastQuery = {
-          received: 3,
-          accepted: 1,
-          rejected: 1,
-          duplicates: 1,
-        };
-        return Promise.resolve([item]);
+        return Promise.resolve(queryResult([item], {
+          received: 3, accepted: 1, rejected: 1, duplicates: 1,
+        }));
       },
       queryVotes(targets) {
         calls.push(targets);
-        this.lastQuery = {
-          received: 1,
-          accepted: 1,
-          rejected: 0,
-          duplicates: 0,
-        };
-        return Promise.resolve([vote(item)]);
+        return Promise.resolve(queryResult([vote(item)]));
       },
     };
     const indexer = new MetadataIndexer({ store, directory, now: () => now });
@@ -56,6 +45,30 @@ await test("indexer uses only metadata interface, records rejected counts and pr
       "One-shot query sockets are closed.",
     );
   } finally {
+    store.close();
+  }
+});
+
+await test("metadata query records and diagnostics are validated together before indexing", async () => {
+  const store = new AggregatorStore();
+  const item = await listing();
+  const indexer = new MetadataIndexer({
+    store,
+    directory: {
+      queryListings() {
+        return Promise.resolve(queryResult([item], { rejected: -1 }));
+      },
+      queryVotes() {
+        throw new Error("Votes must not start after invalid query diagnostics");
+      },
+    },
+  });
+  try {
+    await assert.rejects(indexer.refresh(), /previous index/);
+    assert.equal(store.listArticles().length, 0);
+    assert.equal(store.events().find(event => event.action === "LISTINGS")?.outcome, "failure");
+  } finally {
+    await Effect.runPromise(indexer.shutdownEffect());
     store.close();
   }
 });
@@ -106,10 +119,10 @@ await test("rolling scheduler is explicitly started, never overlaps and stops cl
       runs++;
       started();
       if (runs === 1) await gate;
-      return [];
+      return queryResult([]);
     },
     queryVotes() {
-      return Promise.resolve([]);
+      return Promise.resolve(queryResult([]));
     },
   };
   const indexer = new MetadataIndexer({ store, directory, intervalMs: 20 });
@@ -191,7 +204,7 @@ await test("shutdown joins manual metadata query interruption and prevents futur
         );
       },
       queryVotes() {
-        return Promise.resolve([]);
+        return Promise.resolve(queryResult([]));
       },
     },
   });
@@ -219,7 +232,7 @@ await test("typed relay timeout keeps its error code through metadata decoding a
         return Promise.reject(Object.assign(new Error("Directory request exceeded its deadline"), {code:"timeout"}));
       },
       queryVotes() {
-        return Promise.resolve([]);
+        return Promise.resolve(queryResult([]));
       },
     },
   });
@@ -256,4 +269,36 @@ await test('actual directory timeout keeps a stable code without matching messag
     await assert.rejects(indexer.refresh(), (error:unknown) => Predicate.isObject(error) && error.code === 'timeout');
     assert.equal(store.events().find(event=>event.action==='REFRESH')?.details.error,'timeout');
   } finally {await Effect.runPromise(indexer.shutdownEffect());store.close();}
+});
+
+await test('refresh coverage preserves failures from either phase, survives empty votes and resets on recovery', async () => {
+  const store = new AggregatorStore();
+  const item = await listing();
+  let listingFailed = true, votesFailed = false, votesSkipped = false;
+  const outcomes = (failed: boolean) => [
+    {relay: 'fixture-a', outcome: 'success' as const},
+    failed ? {relay: 'fixture-b', outcome: 'failure' as const, error: 'timeout' as const}
+      : {relay: 'fixture-b', outcome: 'success' as const},
+  ];
+  const indexer = new MetadataIndexer({store, directory: {
+    queryListings: () => Promise.resolve(queryResult([item], {relays: outcomes(listingFailed)})),
+    queryVotes: () => Promise.resolve(queryResult([], {relays: votesSkipped ? [] : outcomes(votesFailed)})),
+  }});
+  try {
+    for (const [listFailure, voteFailure, skipVotes, expected] of [
+      [true, false, false, 'failure'],
+      [false, true, false, 'failure'],
+      [true, false, true, 'failure'],
+      [false, false, true, 'success'],
+      [false, false, false, 'success'],
+    ] as const) {
+      listingFailed = listFailure; votesFailed = voteFailure; votesSkipped = skipVotes;
+      await indexer.refresh();
+      const status = await indexer.status();
+      assert.equal(status.lastQuerySucceeded, true, 'Partial coverage still commits usable metadata');
+      assert.equal(status.relays.length, 2, 'One combined result per relay');
+      assert.equal(status.relays.find(relay => relay.relay === 'fixture-b')?.outcome, expected);
+      assert.equal(store.listArticles().length, 1);
+    }
+  } finally {await Effect.runPromise(indexer.shutdownEffect()); store.close();}
 });

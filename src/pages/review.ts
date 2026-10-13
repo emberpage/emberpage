@@ -42,14 +42,14 @@ function save(share: boolean): Promise<void> {
   return Effect.runPromise(Effect.acquireUseRelease(
     Effect.sync(() => setControlsDisabled(true)),
     () => Effect.gen(function* () {
-      status(share ? 'Saving and sharing publicly…' : 'Saving your copy…');
+      status(share ? 'Preserving and sharing on IPFS…' : 'Saving your copy…');
       const result = yield* sendEffect('SAVE', { id, share, textOnly: textOnly.checked });
       if (result.validationError) {
         status(`${result.validationError} Saved on this device.`, true);
         return;
       }
       if (result.shareError) {
-        status(`${result.shareError} Saved on this device. Choose Share publicly to retry.`, true);
+        status(`${result.shareError} Saved on this device. Choose Share on IPFS to retry.`, true);
         return;
       }
       const reader = new URL('reader.html', location.href);

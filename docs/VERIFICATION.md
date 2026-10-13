@@ -1,22 +1,22 @@
 # Testing and limitations
 
-## Testing release: 0.1.9
+## Browser mesh
 
-This release passed **94 automated tests**, strict TypeScript, linting, Effect diagnostics, architecture and unused-code checks, release-manifest validation, and extension/image/dashboard smoke tests. **20 sequential fixture scenarios** covered private save/read/remove, preview validation, text-only recovery, malformed content, offline failures, repeated actions, pending shares and eviction. These tests publish nothing.
+The current packaged extension transferred a **433,865-byte snapshot from this Mac to a GitHub-hosted browser**, with exact size and SHA-256. Both used real offscreen documents, Chrome messaging, production CSP, IndexedDB contribution storage, WebRTC and Bitswap. No desktop node, gateway or pinning account was needed. Evidence: `artifacts/simplification-cycle/pass-27/`.
 
-Layout checks cover 360, 800 and 1,280 px widths, keyboard navigation, local fonts, light/dark themes and shadcn Typeset article styling. Release CI and ZIP checksums are available on [GitHub](https://github.com/emberpage/emberpage/releases).
+A separate standalone-browser WAN transfer passed in pass 22. Earlier public-relay attempts failed with rejected reservations, full contributor connection capacity or a handshake timeout. Mesh now leaves connection capacity for readers. These successes prove actual transfer, not guaranteed availability: contributors must remain online, browser storage is not permanent, and sustained capacity/hostile networks remain untested.
 
-Native Chrome for Testing captured all six Wikipedia images with unchanged production permissions. An earlier “image unavailable” report misread the accessibility label of successfully embedded images. Missing descriptions now remain empty; only failed image captures get an unavailable placeholder. Isolated image fixtures use temporary permissions and do not establish native toolbar behavior on their own.
+Independent-network tests used synthetic copies and direct fixture listings. A subsequent live test published one original synthetic article through the production extension, discovered it through Nostr in a fresh browser, fetched and validated it through IPFS, cached it, opened the reader UI and verified offline reading. That discovery test used two local browsers and a seeded private archive; it does not add independent-network or native capture evidence. No user article or rating was published. Disposable browser profiles and local contributions were removed; the synthetic public listing remains subject to relay retention. Evidence is retained in `artifacts/final-qualification/live-result.json`.
 
-## Public services
+External pinning integration, Chrome Web Store submission and public dashboard hosting are not configured. The aggregator remains metadata-only. Browser pins are neither permanent nor anonymous.
 
-Earlier synthetic tests verified upload, signed listing, independent-reader validation, images and rating discovery before the Ember Page namespace change. They have not been repeated in the current namespace. Test records later disappeared and tested file URLs returned 404; this does not prove every remote copy was deleted.
+## Application checks
 
-Long-term retention, provider quotas and sustained capacity remain unproven. Sharing is not anonymous. Signatures do not establish article accuracy or independent voters. The dashboard observes metadata; Community checks complete article files before displaying them.
+`pnpm check` runs unit tests, strict TypeScript, ESLint, Effect diagnostics, unused-code and architecture checks, WXT build and release validation. Chrome extension, image and aggregator smoke tests pass; all 20 sequential browser test-drive cases pass. Fixtures cover private save/read/remove, preview, text-only recovery, malformed content, offline sharing, quotas, keyboard navigation, light/dark and narrow layouts. Network evidence stays in `artifacts/browser-ipfs/`; current simplification checks and screenshots are in `artifacts/simplification-cycle/`.
 
-Chrome Web Store submission and public dashboard hosting are not configured.
+Earlier native Chrome testing verified genuine toolbar capture and six embedded Wikipedia images. Automated capture fixtures use temporary local/screenshot permissions and are separate evidence.
 
-## Run the checks
+## Reproduce
 
 ```sh
 pnpm check
@@ -26,4 +26,4 @@ pnpm smoke:aggregator
 pnpm test:drive
 ```
 
-Set `CHROMIUM_EXECUTABLE` to test with another installed Chromium browser. Fixture tests use disposable profiles and temporary local/screenshot permissions; native toolbar behavior needs a separate manual check.
+Set `CHROMIUM_EXECUTABLE` to use another installed Chromium. Tests use disposable profiles; ordinary native toolbar use needs a separate check.

@@ -1,13 +1,13 @@
 import { BoundaryError } from '../../src/domain/errors.ts';
 import { Effect, Option as EffectOption, Schema } from 'effect';
-import { ListingSchema } from '../types.ts';
+import { ListingSchema, RelayOutcomeSchema } from '../types.ts';
 const StatsSchema = Schema.Struct({ count: Schema.Number, bytes: Schema.Number, maxRecords: Schema.Number, maxBytes: Schema.Number, ttlMs: Schema.Number, evictionPolicy: Schema.String, nextExpiryAt: Schema.optionalKey(Schema.Number) });
 const DashboardSchema = Schema.Struct({
   generatedAt: Schema.Number,
   articles: Schema.Array(Schema.Struct({ ...ListingSchema.fields, category: Schema.String, score: Schema.Number, rating: Schema.Struct({ upvotes: Schema.Number, downvotes: Schema.Number, score: Schema.optionalKey(Schema.Number) }) })),
   events: Schema.Array(Schema.Struct({ id: Schema.String, action: Schema.String, kind: Schema.String, outcome: Schema.String, startedAt: Schema.Number, durationMs: Schema.Number, details: Schema.Record(Schema.String, Schema.Unknown) })),
   storage: Schema.Struct({ catalog: StatsSchema, ratings: StatsSchema, journal: StatsSchema, trends: StatsSchema, dbBytes: Schema.NullOr(Schema.Number) }),
-  network: Schema.Struct({ connected: Schema.Boolean, peers: Schema.Number, lastQuerySucceeded: Schema.Boolean, error: Schema.NullOr(Schema.String), pending: Schema.Number, indexing: Schema.Boolean, intervalMs: Schema.Number, nextRunAt: Schema.NullOr(Schema.Number), observedAt: Schema.Number }),
+  network: Schema.Struct({ relays: Schema.optionalKey(Schema.Array(RelayOutcomeSchema)), connected: Schema.Boolean, peers: Schema.Number, lastQuerySucceeded: Schema.Boolean, error: Schema.NullOr(Schema.String), pending: Schema.Number, indexing: Schema.Boolean, intervalMs: Schema.Number, nextRunAt: Schema.NullOr(Schema.Number), observedAt: Schema.Number }),
   trends: Schema.Array(Schema.Struct({ startedAt: Schema.Number, runs: Schema.Number, accepted: Schema.Number, rejected: Schema.Number, failures: Schema.Number })),
   lastRefresh: Schema.NullOr(Schema.Struct({ finishedAt: Schema.optionalKey(Schema.Number), discovered: Schema.optionalKey(Schema.Number), indexed: Schema.optionalKey(Schema.Number), votes: Schema.optionalKey(Schema.Number), rejected: Schema.optionalKey(Schema.Number), duplicates: Schema.optionalKey(Schema.Number) }))
 });
@@ -173,12 +173,18 @@ function renderStorage() {
   $('#database-size').hidden = !Number.isFinite(snapshot.storage.dbBytes);
   $('#database-size').textContent = `Database file: ${bytes(snapshot.storage.dbBytes)}. This includes storage overhead; the limits above count only stored records.`;
 }
+function hasLimitedCoverage(network: DashboardSnapshot['network']) {
+  return network.lastQuerySucceeded && (network.relays ?? []).some(relay => relay.outcome === 'failure');
+}
 function renderNetwork(network: DashboardSnapshot['network']) {
   const pending = Number.isFinite(network.pending) ? network.pending : null;
-  $('#network-label').textContent = (pending ?? 0) > 0 ? 'Checking listings' : network.indexing ? 'Automatic updates on' : network.lastQuerySucceeded ? 'Last update succeeded' : 'Idle';
+  const relays = network.relays ?? [];
+  const succeeded = relays.filter(relay => relay.outcome === 'success').length;
+  const partial = hasLimitedCoverage(network);
+  $('#network-label').textContent = (pending ?? 0) > 0 ? 'Checking listings' : partial ? 'Updated with limited coverage' : network.indexing ? 'Automatic updates on' : network.lastQuerySucceeded ? 'Last update succeeded' : 'Idle';
   $('#network-dot').className = `state-dot${(pending ?? 0) > 0 ? ' progress' : network.indexing || network.connected ? ' connected' : ''}`;
-  const peers = Array.isArray(network.peers) ? network.peers.length : Number.isFinite(network.peers) ? network.peers : null;
-  $('#network-detail').textContent = [peers !== null ? `${peers} server connections` : 'Connection count unavailable', pending !== null ? `${pending} pending` : ''].filter(Boolean).join(' · ');
+  const peers = Number.isFinite(network.peers) ? network.peers : null;
+  $('#network-detail').textContent = [relays.length ? `${succeeded} of ${relays.length} directories responded` : peers !== null ? `${peers} server connections` : 'Connection count unavailable', pending !== null ? `${pending} pending` : ''].filter(Boolean).join(' · ');
   $('#network-observed').textContent = Number.isFinite(network.nextRunAt) && network.nextRunAt !== null ? `Next update ${date(network.nextRunAt)}` : `Checked ${date(network.observedAt)}`;
   const interval = Number.isFinite(network.intervalMs) ? network.intervalMs >= 60_000 ? `${network.intervalMs / 60_000} ${network.intervalMs === 60_000 ? 'minute' : 'minutes'}` : `${network.intervalMs / 1000} ${network.intervalMs === 1000 ? 'second' : 'seconds'}` : null;
   $('.sidebar-note').textContent = network.indexing ? `The dashboard checks public article listings ${interval ? `every ${interval}` : 'automatically'}. It does not download articles.` : 'Automatic updates are off. Choose Check for updates to get new listings.';
@@ -217,8 +223,11 @@ async function load(relay = false, quiet = false) {
   }
   if (relay) { $('#network-label').textContent = 'Refreshing'; $('#network-dot').className = 'state-dot progress'; }
   try {
-    render(await Effect.runPromise(apiEffect(relay ? '/api/refresh' : '/api/dashboard', relay ? 'POST' : 'GET')));
-    if (!quiet || (!relay && snapshotReadFailed)) status(relay ? 'Update finished.' : '');
+    const data = await Effect.runPromise(apiEffect(relay ? '/api/refresh' : '/api/dashboard', relay ? 'POST' : 'GET'));
+    render(data);
+    if (!quiet || (!relay && snapshotReadFailed)) status(relay
+      ? hasLimitedCoverage(data.network) ? 'Updated. Some results may be missing.' : 'Update finished.'
+      : '');
     if (!relay) snapshotReadFailed = false;
   } catch (error) {
     if (!relay) snapshotReadFailed = true;

@@ -1,2 +1,4 @@
 allowBuilds:
   esbuild: true
+patchedDependencies:
+  helia@7.1.16: patches/helia@7.1.16.patch

@@ -1,9 +1,11 @@
-import {Schema} from 'effect';
+import {Deferred, Effect, Schema} from 'effect';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { indexedDB } from 'fake-indexeddb';
 import { JSDOM } from 'jsdom';
 import { inspectArticle } from '../src/extraction/inspect.ts';
+import { createCaptureModule } from '../src/platform/capture.ts';
+import { BoundaryError } from '../src/domain/errors.ts';
 globalThis.indexedDB = indexedDB;
 globalThis.document = new JSDOM('<!doctype html>').window.document;
 type Handler=(message:unknown,sender:chrome.runtime.MessageSender,respond:(response:unknown)=>void)=>unknown;
@@ -47,6 +49,8 @@ const fakeChrome = {
   runtime: {
     id: 'test-extension',
     getURL: (path:string) => `chrome-extension://test-extension/${path}`,
+    getContexts: () => Promise.resolve([{}]),
+    onStartup: {addListener() {}, removeListener() {}},
     onMessage: {
       addListener(fn:Handler) {
         listener = fn;
@@ -104,8 +108,10 @@ await test('sealed preview saves privately withoutnetwork and opening the copy i
   assert.equal((await message('CAPTURE', { tabId: 1 })).ok, true);
   const {id,draft}=newestDraft();
   draft.title = 'Modified';
+  assert.equal((await message('DRAFT', { id })).ok, false, 'Changed previews cannot be displayed either');
   assert.equal((await message('SAVE', { id })).ok, false);
   draft.title = article.title;
+  assert.equal((await message('DRAFT', { id })).ok, true);
   const saved = await message('SAVE', { id });
   assert.equal(saved.ok, true);
   assert.equal(networkCalls, 0);
@@ -115,7 +121,7 @@ await test('sealed preview saves privately withoutnetwork and opening the copy i
   assert.equal(Schema.decodeUnknownSync(Schema.Struct({article:Schema.Struct({title:Schema.String})}))(read.data).article.title,article.title);
   await message('OPEN_COPY', { id: savedCopy.contentHash });
   assert.equal(opened.length, 2);
-  assert.deepEqual((await message('LOCAL_CATALOG')).data, []);
+  assert.deepEqual((await message('LOCAL_CATALOG', {url:article.url})).data, []);
 });
 await test('page scripts cannot request screenshots outside an authorized capture session', async () => {
   const result = await message(
@@ -124,7 +130,7 @@ await test('page scripts cannot request screenshots outside an authorized captur
     { ...sender, url: article.url, frameId: 0, tab: {id:1,index:0,pinned:false,highlighted:false,windowId:1,active:true,incognito:false,frozen:false,selected:true,discarded:false,autoDiscardable:true,groupId:-1,lastAccessed:0} }
   );
   assert.equal(result.ok, false);
-  assert.match(result.error || '', /preview/);
+  assert.match(result.error || '', /preparing this page/);
 });
 
 await test('capture preserves sealed overflow state and requires explicit text-only save', async () => {
@@ -188,7 +194,7 @@ await test('authorized screenshot quota is confined to the active capture and it
     fakeChrome.tabs.sendMessage=async(_id,request)=>{
       token=request.captureToken;
       for(let index=0;index<10;index++)assert.equal((await message('CAPTURE_IMAGE_PIXELS',{captureToken:token},pageSender)).ok,true);
-      const over=await message('CAPTURE_IMAGE_PIXELS',{captureToken:token},pageSender);assert.equal(over.ok,false);assert.match(over.error || '',/preview/);
+      const over=await message('CAPTURE_IMAGE_PIXELS',{captureToken:token},pageSender);assert.equal(over.ok,false);assert.match(over.error || '',/preparing this page/);
       return originalSend(_id,request);
     };
     assert.equal((await message('CAPTURE',{tabId:1})).ok,true);
@@ -213,4 +219,60 @@ await test('navigation during a screenshot rejects the pixels rather than return
     };
     assert.equal((await message('CAPTURE',{tabId:1})).ok,true);
   }finally{Date.now=originalNow;fakeChrome.tabs.sendMessage=originalSend;fakeChrome.tabs.query=originalQuery;fakeChrome.tabs.captureVisibleTab=originalPixels;}
+});
+
+await test('discovery requires an explicit URL and scoped library omits other pages',async()=>{
+  for(const action of ['CATALOG','LOCAL_CATALOG']){
+    assert.equal((await message(action)).ok,false,'Missing URL must be rejected before discovery');
+    assert.equal((await message(action,{url:'chrome://settings'})).ok,false,'Unsupported URL must be rejected');
+  }
+  assert.deepEqual((await message('LIBRARY',{url:'https://example.org/not-saved'})).data,[]);
+  assert.equal((await message('LIBRARY',{url:'chrome://settings'})).ok,false);
+  const all=Schema.decodeUnknownSync(Schema.Array(Schema.Unknown))((await message('LIBRARY')).data);
+  assert.ok(all.length>0,'Full management library remains available');
+});
+
+await test('IPFS sharing requires an existing saved copy before starting the mesh',async()=>{
+  const before=networkCalls;
+    const missing=await message('CONTRIBUTE',{id:'missing'});
+    assert.equal(missing.ok,false);assert.match(missing.error || '',/removed/);
+    assert.equal(networkCalls,before);
+});
+
+await test('capture owns preview save/discard ordering across tabs and releases the guard after failure', async () => {
+  const started = Deferred.makeUnsafe<void>();
+  const gate = Deferred.makeUnsafe<void>();
+  let saves = 0;
+  let fail = false;
+  const capture = createCaptureModule({
+    saveArticle: () => Effect.gen(function* () {
+      saves++;
+      if (fail) return yield* BoundaryError.from(new Error('Fixture save failed'));
+      yield* Deferred.succeed(started, undefined);
+      yield* Deferred.await(gate);
+      return {contentHash: 'c'.repeat(64), shared: false};
+    }),
+    openPage: (page, id) => Effect.sync(() => {opened.push({url: fakeChrome.runtime.getURL(`${page}.html?id=${id}`)});}),
+  });
+  await Effect.runPromise(capture.captureEffect(1));
+  const {id} = newestDraft();
+  const saving = Effect.runPromise(capture.saveEffect(id));
+  try {
+    await Effect.runPromise(Deferred.await(started));
+    await assert.rejects(Effect.runPromise(capture.discardEffect(id)), /current action/);
+    await assert.rejects(Effect.runPromise(capture.saveEffect(id)), /current action/);
+    assert.ok(session[`draft:${id}`]);
+    assert.equal(saves, 1);
+  } finally {
+    await Effect.runPromise(Deferred.succeed(gate, undefined));
+    await saving;
+  }
+  assert.equal(session[`draft:${id}`], undefined);
+  await Effect.runPromise(capture.captureEffect(1));
+  const next = newestDraft();
+  fail = true;
+  await assert.rejects(Effect.runPromise(capture.saveEffect(next.id)), /Fixture save failed/);
+  assert.ok(session[`draft:${next.id}`], 'Failed saving keeps the sealed preview for recovery');
+  await Effect.runPromise(capture.discardEffect(next.id));
+  assert.equal(session[`draft:${next.id}`], undefined);
 });

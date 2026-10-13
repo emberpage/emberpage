@@ -1,0 +1,34 @@
+diff --git a/dist/src/pins.js b/dist/src/pins.js
+index 4b93c9261e40e3c8c129bb3d6eed6eb1639439ca..b43fa4d4b805f594377a6306ff329f48555268e9 100644
+--- a/dist/src/pins.js
++++ b/dist/src/pins.js
+@@ -98,8 +98,11 @@ export class PinsImpl {
+         for await (const node of walker.walk(cid, { ...options, depth: pin.depth })) {
+             const childCid = node.block.cid;
+             await this.#updatePinnedBlock(childCid, (pinnedBlock) => {
++                if (!pinnedBlock.pinnedBy.some(c => uint8ArrayEquals(c, cid.bytes))) {
++                  return false;
++                }
+                 pinnedBlock.pinCount--;
+-                pinnedBlock.pinnedBy = pinnedBlock.pinnedBy.filter(c => uint8ArrayEquals(c, cid.bytes));
++                pinnedBlock.pinnedBy = pinnedBlock.pinnedBy.filter(c => !uint8ArrayEquals(c, cid.bytes));
+                 return true;
+             }, {
+                 ...options,
+diff --git a/src/pins.ts b/src/pins.ts
+index 82cdb18e0b6e484cb112789bdf70d3eae2524bff..4ce59a118e7f00767a0dde02b8bfdebad7f4e0e9 100644
+--- a/src/pins.ts
++++ b/src/pins.ts
+@@ -157,8 +157,11 @@ export class PinsImpl implements Pins {
+     for await (const node of walker.walk(cid, { ...options, depth: pin.depth })) {
+       const childCid = node.block.cid
+       await this.#updatePinnedBlock(childCid, (pinnedBlock): boolean => {
++        if (!pinnedBlock.pinnedBy.some(c => uint8ArrayEquals(c, cid.bytes))) {
++          return false
++        }
+         pinnedBlock.pinCount--
+-        pinnedBlock.pinnedBy = pinnedBlock.pinnedBy.filter(c => uint8ArrayEquals(c, cid.bytes))
++        pinnedBlock.pinnedBy = pinnedBlock.pinnedBy.filter(c => !uint8ArrayEquals(c, cid.bytes))
+         return true
+       }, {
+         ...options,

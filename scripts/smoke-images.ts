@@ -137,9 +137,10 @@ try {
   await review.locator('#save').click();
   await review.waitForURL('**/reader.html?*');
   await review.waitForFunction(() => (document.querySelector('#article')?.textContent?.length ?? 0) > 0);
-  assert.equal(await review.locator('#copy-label').textContent(), 'Private copy');
+  assert.equal(await review.locator('#copy-label').textContent(), 'Saved copy');
   await popup.reload();
-  await popup.locator('[data-view="library"]').click();
+  await popup.locator('#options > summary').click();
+  await popup.locator('#manage').click();
   await popup.locator('#library-list .item-main').waitFor();
   const imageCount = imageRequests.length;
   const readerPromise = context.waitForEvent('page');

@@ -65,6 +65,20 @@ interface CaptureActions {
 /** Keeps capture authorization and sealed preview decisions together until the explicit action completes. */
 export function createCaptureModule({ saveArticle, openPage }: CaptureActions) {
   const captures = new Map<number, CaptureSession>();
+  const changingDrafts = new Set<string>();
+  const changeDraft = Effect.fn("Capture.changeDraft")(function* <A>(
+    id: string, operation: Effect.Effect<A, Error>,
+  ) {
+    return yield* Effect.acquireUseRelease(
+      Effect.try({try: () => {
+        if (changingDrafts.has(id))
+          throw new Error("Wait for this preview's current action to finish.");
+        changingDrafts.add(id);
+      }, catch: failure}),
+      () => operation,
+      () => Effect.sync(() => {changingDrafts.delete(id);}),
+    );
+  });
   const screenshotPermit = Semaphore.makeUnsafe(1);
   let lastScreenshotAt = 0;
   const pixelsEffect = Effect.fn("Capture.pixels")(function* (
@@ -84,7 +98,7 @@ export function createCaptureModule({ saveArticle, openPage }: CaptureActions) {
       session.count >= 10
     )
       return yield* reject(
-        "Image capture is only available during this page’s preview.",
+        "Image capture is only available while preparing this page.",
       );
     session.count++;
     return yield* Effect.gen(function* () {
@@ -97,7 +111,7 @@ export function createCaptureModule({ saveArticle, openPage }: CaptureActions) {
         now() > session.expiresAt
       )
         return yield* reject(
-          "Keep the article tab selected while preparing its preview.",
+          "Keep the article tab selected while preparing this page.",
         );
       const [active] = yield* io(() =>
         chrome.tabs.query({ active: true, windowId: tab.windowId }),
@@ -191,20 +205,25 @@ export function createCaptureModule({ saveArticle, openPage }: CaptureActions) {
     );
   });
   const draftEffect = Effect.fn("Capture.draft")(function* (id: string) {
-    const data = yield* io(() => chrome.storage.session.get(`draft:${id}`));
-    const article: unknown = data[`draft:${id}`];
-    if (!article)
+    const data = yield* io(() => chrome.storage.session.get([`draft:${id}`, `seal:${id}`]));
+    if (!data[`draft:${id}`])
       return yield* reject(
-        "This preview expired. Open the article and choose Preview this article again.",
+        "This preview expired. Return to the article and choose Options → Preview before saving.",
       );
-    return yield* Schema.decodeUnknownEffect(draftSchema)(article).pipe(
+    const article = yield* Schema.decodeUnknownEffect(draftSchema)(data[`draft:${id}`]).pipe(
       Effect.mapError(failure),
     );
+    const seal = yield* io(() => sha256(snapshotSealInput(article)));
+    if (data[`seal:${id}`] !== seal)
+      return yield* reject(
+        "The preview changed. Return to the article and choose Options → Preview before saving.",
+      );
+    return article;
   });
   const discardEffect = Effect.fn("Capture.discard")(function* (id: string) {
-    yield* io(() =>
+    yield* changeDraft(id, io(() =>
       chrome.storage.session.remove([`draft:${id}`, `seal:${id}`]),
-    );
+    ).pipe(Effect.uninterruptible));
     return true;
   });
   const saveEffect = Effect.fn("Capture.save")(function* (
@@ -214,35 +233,23 @@ export function createCaptureModule({ saveArticle, openPage }: CaptureActions) {
       textOnly = false,
     }: { share?: boolean; textOnly?: boolean } = {},
   ) {
-    const data = yield* io(() =>
-      chrome.storage.session.get([`draft:${id}`, `seal:${id}`]),
-    );
-    if (!data[`draft:${id}`])
-      return yield* reject(
-        "This preview expired. Open the article and choose Preview this article again.",
+    return yield* changeDraft(id, Effect.gen(function* () {
+      const article = yield* draftEffect(id);
+      if (article.imageLimitExceeded && textOnly !== true)
+        return yield* reject(
+          article.imageWarning ||
+            "The images are too large to save. Choose Text only.",
+        );
+      const result = yield* saveArticle(
+        articleForMode(article, textOnly === true),
+        { share: share === true },
       );
-    const article = yield* Schema.decodeUnknownEffect(draftSchema)(
-      data[`draft:${id}`],
-    ).pipe(Effect.mapError(failure));
-    const seal = yield* io(() => sha256(snapshotSealInput(article)));
-    if (data[`seal:${id}`] !== seal)
-      return yield* reject(
-        "The preview changed. Open the article and choose Preview this article again.",
-      );
-    if (article.imageLimitExceeded && textOnly !== true)
-      return yield* reject(
-        article.imageWarning ||
-          "The images are too large to save. Choose Text only.",
-      );
-    const result = yield* saveArticle(
-      articleForMode(article, textOnly === true),
-      { share: share === true },
-    );
-    if (!result.shareError && !result.validationError)
-      yield* io(() =>
-        chrome.storage.session.remove([`draft:${id}`, `seal:${id}`]),
-      );
-    return result;
+      if (!result.shareError && !result.validationError)
+        yield* io(() =>
+          chrome.storage.session.remove([`draft:${id}`, `seal:${id}`]),
+        ).pipe(Effect.uninterruptible);
+      return result;
+    }));
   });
   return {
     captureEffect,

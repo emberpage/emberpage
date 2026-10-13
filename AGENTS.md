@@ -2,7 +2,7 @@
 
 Keep article capture, sharing, ratings, and serving explicit. Keep the aggregator separate and metadata-only. Preserve validation, quotas, sanitization, and failure recovery when refactoring.
 
-Use pnpm. Run `pnpm check` before publishing changes. Run the browser smoke tests when extension entrypoints or workflows change. Keep experiments and research out of the active source tree. Every code module is strict TypeScript and uses Effect; `pnpm check` enforces this. Keep imports aligned with the module table in `docs/DEVELOPMENT.md`; only `src/extension.ts` composes extension adapters. Effect diagnostics are a required CI gate. Do not suppress them or reach into module internals.
+Use pnpm. Run `pnpm check` before publishing changes. Run the browser smoke tests when extension entrypoints or workflows change. Keep experiments and research out of the active source tree. Every code module is strict TypeScript and uses Effect; `pnpm check` enforces this. Keep imports aligned with the module table in `docs/DEVELOPMENT.md`; `src/extension.ts` composes background adapters and `src/offscreen.ts` composes the browser mesh. Effect diagnostics are a required CI gate. Do not suppress them or reach into module internals.
 
 # Learning more about Effect
 

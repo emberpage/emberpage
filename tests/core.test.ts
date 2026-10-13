@@ -1,3 +1,4 @@
+import { meshRoutes } from './mesh-fixture.ts';
 import { Effect } from 'effect';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -83,14 +84,9 @@ await test('compressed JSON format uses exact blob bytes and stable content iden
         ).article,
         article
       );
-      const decorated = new TextEncoder().encode(
-        JSON.stringify({
-          format: 'emberpage.article',
-          version: 1,
-          article: { ...article, provenance: { note: 'Inert optional data' } },
-          optional: 'Next producer'
-        })
-      );
+      const decorated = new TextEncoder().encode(JSON.stringify({
+        ...JSON.parse(new TextDecoder().decode(first.bytes)), optional: 'Next producer'
+      }));
       const copy = await decodeArticle(decorated, { now });
       assert.equal(copy.contentHash, first.contentHash);
       assert.notEqual(copy.blobHash, first.blobHash);
@@ -136,6 +132,20 @@ await test('file verification rejects wrong hashes, unknown format, malformed UT
       );
     })
   ));
+
+await test('snapshot decoding binds exact bytes to all expected identity fields', async () => {
+  const valid = await encodeArticle(article, {now});
+  assert.deepEqual(await decodeArticle(valid.bytes, {expected: valid, now}), valid);
+  for (const field of ['blobHash', 'contentHash', 'urlHash'] as const) {
+    const changed = valid[field] === '0'.repeat(64) ? '1'.repeat(64) : '0'.repeat(64);
+    await assert.rejects(decodeArticle(valid.bytes, {expected: {...valid, [field]: changed}, now}), /match/);
+  }
+  await assert.rejects(decodeArticle(valid.bytes, {expected: {...valid, size: valid.size + 1}, now}), /match/);
+  for (const expected of [null, {}, {...valid, blobHash: 'invalid'}, {...valid, size: '1'}])
+    await assert.rejects(decodeArticle(valid.bytes, {expected, now}));
+  const legacy = new TextEncoder().encode(JSON.stringify({format: 'emberpage.article', version: 1, article}));
+  await assert.rejects(decodeArticle(legacy, {now}));
+});
 await test('LRU whole-record eviction keeps the recently read copy and survives beyond24h', () =>
   Effect.runPromise(
     Effect.promise(async () => {
@@ -208,6 +218,30 @@ await test('byte quotas and pending-share protection fail atomically without los
       assert.equal(shared.listedAt, now);
     })
   ));
+
+await test('a rejected read cannot protect a damaged copy from LRU eviction', async () => {
+  let clock = now;
+  const vault = new LocalVault({name: name(), indexedDB, now: () => clock, maxRecords: 2});
+  const [damaged, healthy, incoming] = await Promise.all([fixture('damaged'), fixture('healthy'), fixture('incoming')]);
+  await vault.saveRecord(damaged);
+  clock++;
+  await vault.saveRecord(healthy);
+  const before = (await vault.store.update()).find(record => record.contentHash === damaged.contentHash)?.lastAccessedAt;
+  await vault.store.update(records => records.map(record => {
+    if (record.contentHash !== damaged.contentHash) return record;
+    const bytes = record.bytes.slice();
+    bytes[0] = (bytes[0] ?? 0) ^ 1;
+    return {...record, bytes};
+  }));
+  clock++;
+  await assert.rejects(vault.getRecord(damaged.contentHash), /hash/);
+  assert.equal((await vault.store.update()).find(record => record.contentHash === damaged.contentHash)?.lastAccessedAt, before);
+  clock++;
+  await vault.saveRecord(incoming);
+  assert.deepEqual(new Set((await vault.listSummaries()).map(record => record.contentHash)), new Set([healthy.contentHash, incoming.contentHash]));
+  assert.equal(await vault.getRecord(damaged.contentHash), null);
+  assert.ok(await vault.getRecord(healthy.contentHash));
+});
 await test('reader and contributor vaults stay separate and concurrent writes retain count bounds', () =>
   Effect.runPromise(
     Effect.promise(async () => {
@@ -226,7 +260,7 @@ await test('reader and contributor vaults stay separate and concurrent writes re
       assert.ok(await writer.getRecord(own.contentHash));
     })
   ));
-await test('receipts reserve quota before uploads, persist uploaded state, and never silently evict obligations', () =>
+await test('receipts reserve quota before pinning, persist pinned state, and never silently evict obligations', () =>
   Effect.runPromise(
     Effect.promise(async () => {
       const receipts = new ShareReceipts({
@@ -236,12 +270,14 @@ await test('receipts reserve quota before uploads, persist uploaded state, and n
         }),
         copy = await fixture('receipt');
       const reserved = await receipts.put(copy);
-      assert.equal(reserved.uploaded, false);
-      assert.equal(reserved.provider, 'https://blossom.primal.net');
-      await receipts.put({ ...reserved, uploaded: true });
+      assert.equal(reserved.pinned, false);
+      assert.equal(reserved.cid, undefined);
+      await assert.rejects(receipts.put({ ...reserved, pinned: true, cid: 'bafkreic7i2p4bhkouoidnqnh3ak6lagk3qhcef65qzdgbz735zexp4hu4m' }), /Invalid share receipt/);
+      await assert.rejects(receipts.put({ ...reserved, pinned: true, cid: 'bafkreic7i2p4bhkouoidnqnh3ak6lagk3qhcef65qzdgbz735zexp4hu4m', routes: ['http://127.0.0.1:5001'] }), /Invalid share receipt/);
+      await receipts.put({ ...reserved, pinned: true, routes: meshRoutes(), cid: 'bafkreic7i2p4bhkouoidnqnh3ak6lagk3qhcef65qzdgbz735zexp4hu4m' });
       const uploaded = await receipts.get(copy.contentHash);
       assert.ok(uploaded);
-      assert.equal(uploaded.uploaded, true);
+      assert.equal(uploaded.pinned, true);
       await assert.rejects(
         receipts.put(await fixture('another-receipt')),
         /full/
@@ -265,4 +301,19 @@ await test('gzip rejects expanded byte bombs, truncated streams and invalid enco
     const encoded = await encodeArticle({...article, content:'<p>Repeated archival prose.</p>'.repeat(1000)}, {now});
     assert.ok(encoded.size < 1000);
     assert.deepEqual((await decodeArticle(encoded.bytes, {now})).article, encoded.article);
+  })));
+
+await test('URL-scoped vault listing filters unrelated metadata before body decoding',()=>
+  Effect.runPromise(Effect.promise(async()=>{
+    const initial=Date.now();
+    let clock=initial;
+    const vault=new LocalVault({name:name(),indexedDB,now:()=>clock});
+    const selected=await encodeArticle({...article,url:'https://example.org/selected',capturedAt:initial-1000});
+    const unrelated=await encodeArticle({...article,url:'https://example.org/unrelated',capturedAt:initial+59000});
+    await vault.saveRecord(selected);
+    await vault.saveRecord(unrelated);
+    clock=initial-2000;
+    const scoped=await vault.listRecords(`${selected.article.url}?utm_source=test#heading`);
+    assert.deepEqual(scoped.map(record=>record.article.url),[selected.article.url]);
+    await assert.rejects(vault.listRecords(),/Invalid article fields/,'An unscoped read would attempt the unrelated future-dated body');
   })));

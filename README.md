@@ -2,32 +2,27 @@
 
 <img src="public/icons/logo.png" alt="Ember Page" width="96" height="96">
 
-Keep readable snapshots of articles you care about, so you can revisit them when links break or pages disappear.
+Keep articles readable when links break or pages disappear.
 
-## Install in Chrome
+## Install
 
-1. Download the Chrome ZIP from [the latest release](https://github.com/emberpage/emberpage/releases/latest) and unzip it.
-2. Open `chrome://extensions` and turn on **Developer mode**.
-3. Click **Load unpacked** and choose the unzipped folder.
-4. Pin Ember Page using Chrome’s extensions menu.
+Download and unzip the Chrome ZIP from [Releases](https://github.com/emberpage/emberpage/releases). In `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the folder. Pin Ember Page in Chrome’s extensions menu. It is not in the Chrome Web Store yet.
 
-Ember Page is not in the Chrome Web Store yet.
+## Use
 
-## Build your reading archive
+- **Save article:** keep a private, readable copy on this device.
+- **Find saved copies:** find other readers’ snapshots of the page you’re visiting.
+- **Share on IPFS:** make a saved copy public. No account, desktop app, or pinning service is required.
+- **Keep available:** contribute a copy you found. Your browser participates while running.
+- **Options:** preview, manage saved articles, or pause contribution. Pausing keeps your saved copies.
 
-- **Save:** open an article and click **Save article** in Ember Page. A private copy opens, ready to read.
-- **Read:** open a saved article from **Archive**, or choose **Community** to browse articles shared by others.
-- **Options:** preview before saving, manage saved articles, or save a text-only copy. The preview also lets you share publicly; the reader offers the original link and ratings.
+Sharing and voting are explicit. Share only what you have permission to distribute, and check for personal information first. Copies are checked for readability, not factual accuracy.
 
-## Privacy and storage
+Browser sharing is experimental. Packaged browser transfers have worked across independent networks, but reliable availability is not established. See [verification and limitations](docs/VERIFICATION.md) before relying on it.
 
-Saving is private by default. **Share publicly** publishes your copy, title, and original link. Share only what you have permission to distribute, and check for personal information first. Community articles are checked for readability, not factual accuracy.
+This is not permanent or anonymous storage. Peers and network providers may see your IP address; public shares and votes use a linked identifier. Availability depends on connected peers. Unused private and downloaded copies may be removed when storage fills up. Contributed copies stay until you remove them. Removing a contributed copy stops retaining it here; copies elsewhere cannot be erased. Back up anything irreplaceable.
 
-Sharing is not anonymous: service providers can see your IP address, and public activity from this installation can be linked. Removing a saved copy does not remove public copies.
-
-This is a limited archive, not permanent storage. Older unused articles may be removed to make room, and public hosting has no guaranteed lifetime. Keep a separate backup of anything irreplaceable.
-
-## Development
+## Develop
 
 Use Node.js 24+ and pnpm 12.11.2.
 
@@ -36,8 +31,8 @@ pnpm install
 pnpm dev
 ```
 
-Run `pnpm check` for TypeScript, linting, Effect diagnostics, architecture checks, tests and the WXT build. `pnpm smoke` tests the extension in Chrome; `pnpm zip` packages it.
+`pnpm check` runs type, lint, Effect, architecture, test, and build gates. `pnpm smoke` tests Chrome; `pnpm zip` packages the extension.
 
-`pnpm aggregator` starts a separate [local dashboard](http://127.0.0.1:4318). It tracks community archive listings and ratings without downloading articles. The extension works without it.
+`pnpm aggregator` starts the separate [local dashboard](http://127.0.0.1:4318). It indexes listings and votes without downloading articles. The extension works independently and searches only the current page.
 
-See [development](docs/DEVELOPMENT.md), [architecture and limits](docs/PROTOCOL.md), [verification](docs/VERIFICATION.md), and [releases](docs/RELEASING.md).
+[Development](docs/DEVELOPMENT.md) · [Protocol and limits](docs/PROTOCOL.md) · [Verification](docs/VERIFICATION.md) · [Releases](docs/RELEASING.md)

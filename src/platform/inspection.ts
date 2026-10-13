@@ -1,6 +1,7 @@
 import { Effect, Schema } from "effect";
 import { BoundaryError } from "../domain/errors.ts";
 import type { Article, Inspection } from "../domain/types.ts";
+import { ensureOffscreen } from './offscreen-document.ts';
 const failure = (cause: unknown) =>
   BoundaryError.from(
     cause,
@@ -28,25 +29,11 @@ const inspectionReply = Schema.Union([
 
 /** Owns Chrome's offscreen parser lifetime and validates its inspection reply. */
 export function createArticleInspector() {
-  let creatingOffscreen: Promise<void> | undefined;
   // Native Chrome adapter: callers retain a Promise interface for the existing inspector.
   const inspectEffect = Effect.fn("Inspection.article")(function* (
     article: Article,
   ) {
-    if (!(yield* io(() => chrome.offscreen.hasDocument()))) {
-      creatingOffscreen ??= chrome.offscreen
-        .createDocument({
-          url: "offscreen.html",
-          reasons: ["DOM_PARSER"],
-          justification:
-            "Inspect article HTML and embedded image bounds for explicit cache and read actions.",
-        })
-        .finally(() => {
-          creatingOffscreen = undefined;
-        });
-      const creating = creatingOffscreen;
-      yield* io(() => creating);
-    }
+    yield* ensureOffscreen();
     const response: unknown = yield* io(() =>
       chrome.runtime.sendMessage({
         target: "offscreen",

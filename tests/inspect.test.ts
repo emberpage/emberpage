@@ -23,7 +23,7 @@ void test('inspection computes text and structure from clean HTML rather than a 
 
 void test('inspection removes executable markup and remote resources before measuring', () => {
   const result = inspect('<script>bad()</script><iframe src="https://tracker.test"></iframe><p onclick="bad()">Readable</p><img src="https://tracker.test/pixel" alt="Missing chart"><span hidden>Secret</span>');
-  assert.equal(result.textContent, 'Readable[Image: Missing chart]');
+  assert.equal(result.textContent, 'Readable [Image: Missing chart]');
   assert.equal(result.paragraphs, 1);
   assert.equal(result.images, 0);
   assert.ok(!result.content.includes('tracker.test'));

@@ -12,7 +12,7 @@ export function articleForMode<T extends Article & { textContent: string }>(arti
     );
   const content = Schema.decodeUnknownSync(TextSnapshot)(article).textContent
     .split(/\n\s*\n/)
-    .map((paragraph) => `<p>${escape(paragraph)}</p>`)
+    .map((paragraph) => `<p>${escape(paragraph).replace(/\n/g, '<br>')}</p>`)
     .join('');
   return { ...article, content };
 }

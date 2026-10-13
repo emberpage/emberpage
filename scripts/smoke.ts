@@ -59,15 +59,19 @@ try {
   context = await Effect.runPromise(Effect.tryPromise(() => chromium.launchPersistentContext(join(root, 'profile'), {
     headless: true, channel: 'chromium', executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
     viewport: { width: 1000, height: 800 },
-    args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+    args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`, '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost'],
   })));
   context.setDefaultTimeout(90_000);
-  context.on('request', request => { if (/primal\.net/.test(request.url())) publicNetworkCalls.push(request.url()); });
+  context.on('request', request => { if (/primal\.net|damus\.io|nos\.lol/.test(request.url())) publicNetworkCalls.push(request.url()); });
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const id = new URL(worker.url()).host;
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${id}/popup.html`);
-  await popup.locator('#library-list .empty').waitFor();
+  await popup.locator('#library-list .empty').waitFor({ state: 'attached' });
+  assert.equal(await popup.locator('#library-view').isVisible(), false);
+  assert.equal(await popup.locator('#domain').isVisible(), false);
+  assert.equal(await popup.locator('#capture').isDisabled(), true);
+  assert.equal(await popup.locator('#browse').isDisabled(), true);
   assert.equal(await popup.locator('#options').getAttribute('open'), null);
   assert.deepEqual(publicNetworkCalls, []);
   const articlePage = await context.newPage();
@@ -116,11 +120,14 @@ try {
   await keyboardActivate(review, '#save');
   await review.waitForURL('**/reader.html?*');
   await review.waitForFunction(() => (document.querySelector('#article')?.textContent?.length ?? 0) > 0);
-  assert.equal(await review.locator('#copy-label').textContent(), 'Private copy');
+  assert.equal(await review.locator('#copy-label').textContent(), 'Saved copy');
   await popup.reload();
   await popup.locator('#app').waitFor({ state: 'visible' });
-  await keyboardActivate(popup, '[data-view="library"]');
-  await popup.locator('#library-list .item-title').waitFor();
+  await articlePage.bringToFront();
+  await popup.reload();
+  await popup.locator('#app').waitFor({ state: 'visible' });
+  assert.equal(await popup.locator('[data-view]').count(), 0);
+  await popup.locator('#library-list .item-title').first().waitFor();
   assert.match(await popup.locator('#library-list .item-detail').textContent() || '', /Saved on this device/);
   await popup.screenshot({ path: 'artifacts/popup-saved.png' });
   const readerPromise = context.waitForEvent('page');
@@ -131,15 +138,56 @@ try {
   assert.match(await reader.locator('#article').textContent() || '', /Observation 12/);
   assert.equal(await reader.locator('#article img,#article script').count(), 0);
   assert.equal(await reader.locator('#source').getAttribute('href'), `${origin}/article?id=42`);
+  assert.equal(await reader.locator('#preserve-ipfs').isVisible(), true);
+  assert.equal(publicNetworkCalls.length, 0, 'Private caching and reading must not publish or query a provider.');
+  await context.setOffline(true);
+  await keyboardActivate(reader, '#preserve-ipfs');
+  await reader.waitForFunction(() => document.querySelector('#ipfs-status')?.classList.contains('error'));
+  await context.setOffline(false);
+  assert.equal(await reader.locator('#ipfs-setup').count(), 0, 'Browser sharing requires no desktop setup');
+  assert.equal(await reader.locator('#preserve-ipfs').isDisabled(), false);
+  assert.match(await reader.locator('#article').textContent() || '', /Observation 12/);
   await reader.screenshot({ path: 'artifacts/reader.png', fullPage: true });
 
-  assert.equal(publicNetworkCalls.length, 0, 'Private caching and reading must not publish or query a provider.');
-  assert.equal((await call(popup, 'LOCAL_CATALOG')).length, 0, 'Private copies must not enter the popular list.');
+  assert.equal((await call(popup, 'LOCAL_CATALOG', { url: `${origin}/article?id=42` })).length, 0, 'Private copies must not enter the popular list.');
   await keyboardActivate(popup, '#manage');
   await popup.locator('#library-list').getByRole('button', { name: /^Remove / }).click();
   await popup.locator('#library-list .empty').waitFor();
 
-  console.log('PASS: keyboard direct preview/Archive/Community, private saving, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
+  // A disposable pre-pin reservation represents retained metadata whose article was evicted.
+  await popup.evaluate(async () => {
+    const request = indexedDB.open('emberpage-ipfs-pins-v1', 1);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onupgradeneeded = () => request.result.createObjectStore('records', {keyPath: 'blobHash'});
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error ?? new Error('Fixture database failed.'));
+    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('records', 'readwrite');
+        tx.objectStore('records').put({blobHash: 'b'.repeat(64), size: 1});
+        tx.objectStore('records').put({blobHash: 'c'.repeat(64), size: 1});
+        tx.oncomplete = () => resolve();
+        tx.onerror = tx.onabort = () => reject(tx.error ?? new Error('Fixture transaction failed.'));
+      });
+    } finally {db.close();}
+  });
+  await keyboardActivate(popup, '#manage');
+  await popup.locator('#library-list .item-title').first().waitFor();
+  assert.match(await popup.locator('#library-list').textContent() || '', /Retained contribution/);
+  assert.equal(await popup.locator('#library-list button.item-main').count(), 0, 'Orphan metadata offers no unavailable Open action');
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await popup.emulateMedia({colorScheme});
+    await popup.screenshot({path: `artifacts/popup-retained-${colorScheme}.png`});
+  }
+  await keyboardActivate(popup, '#library-list .item-actions button');
+  await popup.waitForFunction(() => document.querySelectorAll('#library-list .item').length === 1);
+  assert.equal(await popup.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Remove Retained contribution · cccccccc');
+  await popup.keyboard.press('Enter');
+  await popup.locator('#library-list .empty').waitFor();
+  assert.equal(publicNetworkCalls.length, 0, 'Removing orphan metadata does not contact a provider');
+
+  console.log('PASS: keyboard preview/current-page copies/archive management, private saving, safe images and text-only mode, 360/800/1280px review, local reading, removal, and no automatic networking.');
 } finally {
   await context?.close();
   await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

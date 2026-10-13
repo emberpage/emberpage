@@ -1,4 +1,5 @@
 import { Deferred, Effect, Schema } from "effect";
+import { normalizeUrl } from "../domain/url.ts";
 import { encodeArticle } from "../domain/article.ts";
 import { filterCandidates, rankCandidates } from "../domain/candidates.ts";
 import type {
@@ -11,6 +12,7 @@ import type {
   Rating,
   ShareReceipt,
   ShareResult,
+  SavedCopySummary,
   Vote,
 } from "../domain/types.ts";
 
@@ -25,7 +27,7 @@ const failure = (cause: unknown) =>
     cause,
   });
 const io = <A>(operation: () => PromiseLike<A>) =>
-  Effect.tryPromise({ try: operation, catch: failure });
+  Effect.tryPromise({ try: operation, catch: failure }).pipe(Effect.uninterruptible);
 const rejected = (message: string) => Effect.fail(failure(new Error(message)));
 type EligibleCopy = ArticleCopy & { listedAt: number };
 interface CopyStore {
@@ -34,14 +36,17 @@ interface CopyStore {
     options?: { shared?: boolean; pendingShare?: boolean },
   ): Promise<unknown>;
   getRecord(hash: string): Promise<ArticleCopy | null>;
-  listRecords(): Promise<ArticleCopy[]>;
+  listRecords(url?: string): Promise<ArticleCopy[]>;
+  listSummaries(url?: string): Promise<SavedCopySummary[]>;
   setPending(hash: string, value: boolean): Promise<unknown>;
+  retainForMesh(hash: string): Promise<unknown>;
   setShared(hash: string, value: boolean, listedAt: number): Promise<unknown>;
   deleteRecord(hash: string): Promise<unknown>;
   clear(): Promise<unknown>;
 }
 interface ArchiveOptions {
   network: ArticleNetwork;
+  contributions: {list(): Promise<readonly {blobHash: string; size: number}[]>};
   writer: CopyStore;
   reader: CopyStore;
   catalog: {
@@ -55,7 +60,7 @@ interface ArchiveOptions {
   receipts: {
     get(hash: string): Promise<ShareReceipt | null>;
     put(
-      receipt: Omit<ShareReceipt, "provider"> & { provider?: string },
+      receipt: ShareReceipt,
     ): Promise<ShareReceipt>;
     delete(hash: string): Promise<unknown>;
     clear(): Promise<unknown>;
@@ -67,9 +72,8 @@ interface ArchiveOptions {
 function discoveryCandidates(listings: Listing[]) {
   type Claim = { listings: Listing[]; listedAt: number };
   const claims = new Map<string, Claim>();
-  const urls = new Map<string, { claims: Claim[]; next: number }>();
   for (const listing of listings) {
-    const binding = JSON.stringify([listing.blobHash, listing.size, listing.urlHash,
+    const binding = JSON.stringify([listing.cid, listing.blobHash, listing.size, listing.urlHash,
       listing.contentHash, listing.url, listing.title, listing.byline, listing.capturedAt]);
     const existing = claims.get(binding);
     if (existing) {
@@ -79,26 +83,16 @@ function discoveryCandidates(listings: Listing[]) {
     }
     const claim = {listings:[listing], listedAt:listing.createdAt};
     claims.set(binding, claim);
-    const url = urls.get(listing.urlHash) || {claims:[], next:0};
-    url.claims.push(claim);
-    urls.set(listing.urlHash, url);
   }
   const publishers = new Map<string, number>();
-  const selected: (Listing & {listedAt:number})[] = [];
-  // Two rounds give other URLs a turn before spending a second attempt on one URL.
-  for (let round=0; round<2; round++) {
-    for (const url of urls.values()) {
-      while (url.next < url.claims.length) {
-        const claim = url.claims[url.next++];
-        if (!claim) break;
-        const listing = claim.listings.find(entry => (publishers.get(entry.pubkey) || 0) < 4);
-        if (!listing) continue;
-        publishers.set(listing.pubkey, (publishers.get(listing.pubkey) || 0) + 1);
-        selected.push({...listing, listedAt:claim.listedAt});
-        if (selected.length === 20) return selected;
-        break;
-      }
-    }
+  const selected: {listing: Listing & {listedAt:number}; routes: string[]}[] = [];
+  for (const claim of claims.values()) {
+    const listing = claim.listings.find(entry => (publishers.get(entry.pubkey) || 0) < 4);
+    if (!listing) continue;
+    publishers.set(listing.pubkey, (publishers.get(listing.pubkey) || 0) + 1);
+    selected.push({listing: {...listing, listedAt:claim.listedAt},
+      routes: [...new Set(claim.listings.flatMap(entry => entry.routes))].slice(0,12)});
+    if (selected.length === 20) break;
   }
   return selected;
 }
@@ -106,20 +100,22 @@ function discoveryCandidates(listings: Listing[]) {
 /** Owns explicit share workflows and the distinction between private and public copies. */
 export class ArticleArchive {
   readonly #network: ArchiveOptions["network"];
+  readonly #contributions: ArchiveOptions["contributions"];
   readonly #writer: ArchiveOptions["writer"];
   readonly #reader: ArchiveOptions["reader"];
   readonly #catalog: ArchiveOptions["catalog"];
   readonly #votes: ArchiveOptions["votes"];
   readonly #receipts: ArchiveOptions["receipts"];
   readonly #inspect: ArchiveOptions["inspect"];
-  readonly #activeShares = new Set<string>();
-  #discovery: Deferred.Deferred<
-    { entries: PopularEntry[]; warning: string },
-    Error
-  > | null = null;
+  readonly #activeCopies = new Set<string>();
+  #maintenance: "pause" | "clear" | null = null;
+  readonly #discoveries = new Map<string, Deferred.Deferred<
+    { entries: PopularEntry[]; warning: string }, Error
+  >>();
 
   constructor(options: ArchiveOptions) {
     this.#network = options.network;
+    this.#contributions = options.contributions;
     this.#writer = options.writer;
     this.#reader = options.reader;
     this.#catalog = options.catalog;
@@ -127,6 +123,42 @@ export class ArticleArchive {
     this.#receipts = options.receipts;
     this.#inspect = options.inspect;
   }
+  readonly #mutateCopy = Effect.fn("ArticleArchive.mutateCopy")(function* <A>(
+    this: ArticleArchive, hash: string, operation: Effect.Effect<A, Error>,
+  ) {
+    return yield* Effect.scoped(Effect.gen({self: this}, function* () {
+      yield* Effect.acquireRelease(
+        Effect.try({try: () => {
+          if (this.#maintenance)
+            throw new Error(this.#maintenance === "pause"
+              ? "Wait for contribution to pause before sharing."
+              : "Wait for archive cleanup to finish.");
+          if (this.#activeCopies.has(hash))
+            throw new Error("Wait for this copy's current operation to finish.");
+          this.#activeCopies.add(hash);
+        }, catch: failure}),
+        () => Effect.sync(() => {this.#activeCopies.delete(hash);}),
+      );
+      return yield* operation;
+    }));
+  });
+  readonly #maintain = Effect.fn("ArticleArchive.maintain")(function* (
+    this: ArticleArchive, mode: "pause" | "clear", operation: Effect.Effect<void, Error>,
+  ) {
+    return yield* Effect.scoped(Effect.gen({self: this}, function* () {
+      yield* Effect.acquireRelease(
+        Effect.try({try: () => {
+          if (this.#maintenance || this.#activeCopies.size || this.#discoveries.size)
+            throw new Error(mode === "pause"
+              ? "Wait for sharing to finish before pausing contribution."
+              : "Wait for archive operations to finish before clearing copies.");
+          this.#maintenance = mode;
+        }, catch: failure}),
+        () => Effect.sync(() => {this.#maintenance = null;}),
+      );
+      yield* operation;
+    })).pipe(Effect.uninterruptible);
+  });
   readonly #inspectEffect = (
     article: Article,
   ): Effect.Effect<Inspection, ArchiveError> =>
@@ -147,10 +179,17 @@ export class ArticleArchive {
     const copy: ArticleCopy = yield* io(() =>
       encodeArticle({ ...article, content: inspection.content }),
     );
-    yield* io(() => this.#writer.saveRecord(copy, { pendingShare: share }));
-    if (share) return yield* this.#shareEffect(copy);
-    yield* this.discardShareEffect(copy.contentHash);
-    return { contentHash: copy.contentHash, shared: false };
+    return yield* this.#mutateCopy(copy.contentHash, Effect.gen({self: this}, function* () {
+      const retained = (yield* io(() => this.#writer.listSummaries())).find(
+        record => record.contentHash === copy.contentHash && record.meshRetained,
+      );
+      const previous = retained ? yield* io(() => this.#writer.getRecord(copy.contentHash)) : null;
+      const saved = previous ?? copy;
+      yield* io(() => this.#writer.saveRecord(saved, { pendingShare: share }));
+      if (share) return yield* this.#shareEffect(saved);
+      yield* this.#discardShareEffect(copy.contentHash);
+      return { contentHash: copy.contentHash, shared: false };
+    }));
   });
 
   readonly #shareEffect = Effect.fn("ArticleArchive.share")(function* (
@@ -158,29 +197,15 @@ export class ArticleArchive {
     copy: ArticleCopy,
   ): Effect.fn.Return<ShareResult, Error> {
     let receipt: ShareReceipt | null = null;
-    let listing: Listing | undefined;
+    let listing: (Listing & {warning?: string}) | undefined;
     const workflow = Effect.gen({ self: this }, function* () {
-      yield* Effect.acquireRelease(
-        Effect.try({
-          try: () => {
-            if (this.#activeShares.has(copy.contentHash))
-              throw new Error("This copy is already being shared.");
-            this.#activeShares.add(copy.contentHash);
-          },
-          catch: failure,
-        }),
-        () =>
-          Effect.sync(() => {
-            this.#activeShares.delete(copy.contentHash);
-          }),
-      );
       return yield* Effect.gen({ self: this }, function* (): Effect.fn.Return<
         ShareResult,
         Error
       > {
         if (!(yield* io(() => this.#writer.setPending(copy.contentHash, true))))
           return yield* rejected(
-            "The saved copy was removed. Open the article and choose Preview this article again.",
+            "This saved copy was removed. Open the original page and choose Save article again.",
           );
         receipt = yield* io(() => this.#receipts.get(copy.contentHash));
         if (
@@ -200,7 +225,7 @@ export class ArticleArchive {
         }
         if (receipt && receipt.blobHash !== copy.blobHash)
           return yield* rejected(
-            "Choose Cancel sharing in Saved before sharing a new copy.",
+            "Open Options → Manage saved articles and cancel unfinished sharing before sharing a new copy.",
           );
         if (!receipt)
           receipt = yield* io(() =>
@@ -208,19 +233,24 @@ export class ArticleArchive {
               contentHash: copy.contentHash,
               blobHash: copy.blobHash,
               size: copy.size,
-              uploaded: false,
+              pinned: false,
             }),
           );
-        if (!receipt.uploaded) {
+        {
+          // Reserve the visible archive record before a pin can survive cancellation.
+          yield* io(() => this.#writer.retainForMesh(copy.contentHash));
+          // Idempotent local pins refresh the live peer routes on each explicit retry.
           receipt = {
-            ...(yield* this.#network.uploadEffect(copy)),
+            ...(yield* this.#network.pinEffect(copy)),
             contentHash: copy.contentHash,
-            uploaded: true,
+            pinned: true,
           };
           const saved = receipt;
           yield* io(() => this.#receipts.put(saved));
         }
-        listing = yield* this.#network.publishListingEffect(copy, receipt);
+        if (!receipt.cid) return yield* rejected("The preserved file address was not saved. Retry sharing.");
+        if (!receipt.routes) return yield* rejected("The peer address was not saved. Retry sharing.");
+        listing = yield* this.#network.publishListingEffect(copy, {cid:receipt.cid,blobHash:receipt.blobHash,size:receipt.size,routes:receipt.routes});
         const accepted = listing;
         yield* io(() =>
           this.#writer.setShared(copy.contentHash, true, accepted.createdAt),
@@ -228,7 +258,7 @@ export class ArticleArchive {
         yield* io(() => this.#catalog.ingest([accepted]));
         yield* io(() => this.#receipts.delete(copy.contentHash));
         yield* io(() => this.#writer.setPending(copy.contentHash, false));
-        return { contentHash: copy.contentHash, shared: true };
+        return { contentHash: copy.contentHash, shared: true, pinned: true, cid: receipt.cid, ...(accepted.warning ? {warning:accepted.warning} : {}) };
       }).pipe(
         Effect.catch((error) => {
           if (listing)
@@ -236,14 +266,18 @@ export class ArticleArchive {
               contentHash: copy.contentHash,
               shared: true,
               localSaved: true,
+              pinned: true,
+              ...(receipt?.cid ? {cid:receipt.cid} : {}),
               warning:
-                "The public share was accepted, but its local status could not be updated. Reopen Saved to check it.",
+                "Shared publicly, but the saved status could not be updated. Check Options → Manage saved articles.",
             });
           if (receipt)
             return Effect.succeed<ShareResult>({
               contentHash: copy.contentHash,
               shared: false,
               localSaved: true,
+              pinned: receipt.pinned,
+              ...(receipt.cid ? {cid:receipt.cid} : {}),
               shareError: error.message,
             });
           return io(() =>
@@ -255,39 +289,34 @@ export class ArticleArchive {
     return yield* Effect.scoped(workflow);
   });
 
-  readonly retryEffect = Effect.fn("ArticleArchive.retry")(function* (
-    this: ArticleArchive,
-    hash: string,
-  ) {
-    const copy = yield* io(() => this.#writer.getRecord(hash));
-    if (!copy)
-      return yield* rejected(
-        "The saved copy was removed. Open the article and choose Preview this article again.",
-      );
-    return yield* this.#shareEffect(copy);
-  });
-  readonly discardShareEffect = Effect.fn("ArticleArchive.discardShare")(
+  readonly #discardShareEffect = Effect.fn("ArticleArchive.discardShare")(
     function* (this: ArticleArchive, hash: string) {
-      if (this.#activeShares.has(hash))
-        return yield* rejected("Wait for sharing to finish.");
       yield* io(() => this.#receipts.delete(hash));
       yield* io(() => this.#writer.setPending(hash, false));
     },
   );
+  readonly discardShareEffect = Effect.fn("ArticleArchive.cancelSharing")(function* (
+    this: ArticleArchive, hash: string,
+  ) {
+    yield* this.#mutateCopy(hash, this.#discardShareEffect(hash));
+  });
 
   readonly #discoverEffect = Effect.fn("ArticleArchive.discover")(function* (
     this: ArticleArchive,
+    url: string,
   ) {
-    const fresh = yield* this.#network.queryListingsEffect();
+    const query = yield* this.#network.queryListingsEffect(url);
+    const fresh = query.records.filter(listing => listing.url === url);
+    const directoryWarning = query.warning || "";
     yield* io(() => this.#catalog.ingest(fresh));
-    const listings = yield* io(() => this.#catalog.list());
+    const listings = (yield* io(() => this.#catalog.list())).filter(listing => listing.url === url);
     const budget = { remainingBytes: 16 * 1024 * 1024 };
     const inspected = (yield* Effect.forEach(
       discoveryCandidates(listings),
-      (listing) =>
+      ({listing, routes}) =>
         Effect.gen({ self: this }, function* () {
           const copy = {
-            ...(yield* this.#network.readArticleEffect(listing, { budget })),
+            ...(yield* this.#network.readArticleEffect(listing, { budget, routes })),
             listedAt: listing.listedAt,
           };
           const [eligible] = yield* this.#eligible([copy]);
@@ -306,17 +335,17 @@ export class ArticleArchive {
       copy => io(() => this.#reader.saveRecord(copy, {shared:true})).pipe(
         Effect.as(copy), Effect.catch(() => Effect.succeed(null))),
       {concurrency:2})).filter((copy): copy is EligibleCopy => copy !== null);
-    let warning = "";
+    let warning = directoryWarning;
     if (accepted.length) {
-      warning = yield* Effect.gen({ self: this }, function* () {
+      const ratingsWarning = yield* Effect.gen({ self: this }, function* () {
         const votes = yield* this.#network.queryVotesEffect(
           accepted.map((copy) => ({
             urlHash: copy.urlHash,
             contentHash: copy.contentHash,
           })),
         );
-        yield* io(() => this.#votes.ingest(votes));
-        return "";
+        yield* io(() => this.#votes.ingest(votes.records));
+        return votes.warning || "";
       }).pipe(
         Effect.catch(() =>
           Effect.succeed(
@@ -324,27 +353,35 @@ export class ArticleArchive {
           ),
         ),
       );
+      warning = [directoryWarning, ratingsWarning].filter(Boolean).join(" ");
     }
     return { entries: yield* this.#entriesEffect(accepted), warning };
   });
   readonly browseEffect = Effect.fn("ArticleArchive.browse")(function* (
     this: ArticleArchive,
+    rawUrl: string,
   ) {
+    if (this.#maintenance)
+      return yield* rejected("Wait for archive cleanup to finish before finding copies.");
+    const url = yield* Effect.try({try: () => normalizeUrl(rawUrl), catch: failure});
     const { pending, owner } = yield* Effect.sync(() => {
-      if (this.#discovery) return { pending: this.#discovery, owner: false };
+      const existing = this.#discoveries.get(url);
+      if (existing) return { pending: existing, owner: false };
+      if (this.#discoveries.size >= 2) return { pending: null, owner: false };
       const pending = Deferred.makeUnsafe<
         { entries: PopularEntry[]; warning: string },
         Error
       >();
-      this.#discovery = pending;
+      this.#discoveries.set(url, pending);
       return { pending, owner: true };
     });
+    if (!pending) return yield* rejected("Wait for an article search to finish before searching another page.");
     if (!owner) return yield* Deferred.await(pending);
-    return yield* this.#discoverEffect().pipe(
+    return yield* this.#discoverEffect(url).pipe(
       Effect.onExit((exit) => Deferred.done(pending, exit).pipe(Effect.asVoid)),
       Effect.ensuring(
         Effect.sync(() => {
-          if (this.#discovery === pending) this.#discovery = null;
+          if (this.#discoveries.get(url) === pending) this.#discoveries.delete(url);
         }),
       ),
     );
@@ -377,11 +414,12 @@ export class ArticleArchive {
     );
   });
   readonly localCatalogEffect = Effect.fn("ArticleArchive.localCatalog")(
-    function* (this: ArticleArchive) {
+    function* (this: ArticleArchive, rawUrl: string) {
+      const url = yield* Effect.try({try: () => normalizeUrl(rawUrl), catch: failure});
       const copies = [
-        ...(yield* io(() => this.#reader.listRecords())),
-        ...(yield* io(() => this.#writer.listRecords())),
-      ].filter((record) => record.shared);
+        ...(yield* io(() => this.#reader.listRecords(url))),
+        ...(yield* io(() => this.#writer.listRecords(url))),
+      ].filter((record) => record.shared && record.article.url === url);
       return yield* this.#entriesEffect(yield* this.#eligible(copies));
     },
   );
@@ -396,9 +434,23 @@ export class ArticleArchive {
     const record = writer?.shared ? writer : reader || writer;
     if (!record)
       return yield* rejected(
-        "This local copy was removed. Browse Popular or capture it again.",
+        "This saved copy was removed. Open the original page and choose Find saved copies or Save article.",
       );
     return record;
+  });
+  readonly contributeEffect = Effect.fn("ArticleArchive.contribute")(function* (
+    this: ArticleArchive, hash: string,
+  ) {
+    return yield* this.#mutateCopy(hash, Effect.gen({self: this}, function* () {
+      const retained = yield* io(() => this.#writer.getRecord(hash));
+      const copy = retained ?? (yield* this.recordEffect(hash));
+      if (!retained) {
+        if (!(yield* this.#eligible([copy])).length)
+          return yield* rejected("This saved snapshot is too short or incomplete to share.");
+        yield* io(() => this.#writer.saveRecord(copy, {pendingShare:true}));
+      }
+      return yield* this.#shareEffect(copy);
+    }));
   });
   readonly readEffect = Effect.fn("ArticleArchive.read")(function* (
     this: ArticleArchive,
@@ -436,50 +488,77 @@ export class ArticleArchive {
     hash: string,
   ) {
     const record = yield* this.recordEffect(hash);
+    let warning: string | undefined;
     if (record.shared) {
       const votes = yield* this.#network.queryVotesEffect([
         { urlHash: record.urlHash, contentHash: hash },
       ]);
-      yield* io(() => this.#votes.ingest(votes));
+      yield* io(() => this.#votes.ingest(votes.records));
+      warning = votes.warning;
     }
-    return yield* io(() => this.#votes.summarize(hash));
+    return {...(yield* io(() => this.#votes.summarize(hash))), ...(warning ? {warning} : {})};
   });
   readonly libraryEffect = Effect.fn("ArticleArchive.library")(function* (
     this: ArticleArchive,
+    rawUrl?: string,
   ) {
-    const writer = yield* io(() => this.#writer.listRecords());
-    const reader = yield* io(() => this.#reader.listRecords());
+    const url = rawUrl === undefined ? undefined : yield* Effect.try({try: () => normalizeUrl(rawUrl), catch: failure});
+    const writer = yield* io(() => this.#writer.listSummaries(url));
+    const reader = yield* io(() => this.#reader.listSummaries(url));
+    const retained = url === undefined ? yield* io(() => this.#contributions.list()) : [];
+    const knownFiles = new Set(writer.map(record => record.blobHash));
     return [
+      ...retained.filter(record => !knownFiles.has(record.blobHash)).map(record => ({
+        contentHash: record.blobHash, url: "", title: `Retained contribution · ${record.blobHash.slice(0, 8)}`,
+        capturedAt: 0, shared: true, pendingShare: false, source: "mesh",
+      })),
       ...writer.map((record) => ({ ...record, source: "writer" })),
       ...reader.map((record) => ({ ...record, source: "reader" })),
-    ].map(({ contentHash, article, shared, pendingShare, source }) => ({
+    ].filter(record => url === undefined || record.url === url).map(({ contentHash, url, title, capturedAt, shared, pendingShare, source }) => ({
       contentHash,
-      url: article.url,
-      title: article.title,
+      url,
+      title,
+      capturedAt,
       shared,
       pendingShare,
       source,
-    }));
+    })).sort((a, b) => b.capturedAt - a.capturedAt);
   });
   readonly removeEffect = Effect.fn("ArticleArchive.remove")(function* (
     this: ArticleArchive,
     hash: string,
     source: string,
   ) {
-    if (source === "reader")
-      return yield* io(() => this.#reader.deleteRecord(hash));
-    yield* this.discardShareEffect(hash);
-    return yield* io(() => this.#writer.deleteRecord(hash));
+    if (source === "mesh")
+      return yield* this.#maintain("clear", Effect.gen({self: this}, function* () {
+        const records = yield* io(() => this.#contributions.list());
+        if (!records.some(record => record.blobHash === hash)) return;
+        if ((yield* io(() => this.#writer.listSummaries())).some(record => record.blobHash === hash))
+          return yield* rejected("Remove this contribution through its saved article.");
+        yield* this.#network.forgetEffect(hash);
+      }));
+    return yield* this.#mutateCopy(hash, Effect.gen({self: this}, function* () {
+      if (source === "reader")
+        return yield* io(() => this.#reader.deleteRecord(hash));
+      const copy = (yield* io(() => this.#writer.listSummaries())).find(record => record.contentHash === hash);
+      if (copy) yield* this.#network.forgetEffect(copy.blobHash);
+      yield* this.#discardShareEffect(hash);
+      return yield* io(() => this.#writer.deleteRecord(hash));
+    }));
   });
   readonly clearEffect = Effect.fn("ArticleArchive.clear")(function* (
     this: ArticleArchive,
   ) {
-    if (this.#activeShares.size)
-      return yield* rejected(
-        "Wait for sharing to finish before clearing copies.",
-      );
-    yield* io(() => this.#receipts.clear());
-    yield* io(() => this.#writer.clear());
-    yield* io(() => this.#reader.clear());
+    return yield* this.#maintain("clear", Effect.gen({self: this}, function* () {
+      yield* this.#network.clearPinsEffect();
+      yield* io(() => this.#receipts.clear());
+      yield* io(() => this.#writer.clear());
+      yield* io(() => this.#reader.clear());
+    }));
+  });
+  readonly pauseEffect = Effect.fn("ArticleArchive.pause")(function* (
+    this: ArticleArchive,
+  ) {
+    return yield* this.#maintain("pause", this.#network.pauseEffect());
   });
 }

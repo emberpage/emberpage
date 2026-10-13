@@ -1,3 +1,4 @@
+import { meshRoutes } from './mesh-fixture.ts';
 import { Effect } from 'effect';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,7 +25,8 @@ async function entry(number: number, createdAt = now) {
     title: 'Article',
     byline: 'Writer',
     capturedAt: now - 90 * 86400000,
-    provider: 'https://blossom.primal.net'
+    routes: meshRoutes(),
+    cid: 'bafkreic7i2p4bhkouoidnqnh3ak6lagk3qhcef65qzdgbz735zexp4hu4m'
   };
 }
 await test('discovery validates metadata identity/window without expiring old article bodies', () =>
@@ -34,7 +36,9 @@ await test('discovery validates metadata identity/window without expiring old ar
       assert.equal(await validateCatalogEntry(valid, { now }), true);
       for (const change of [
         { urlHash: hash(2) },
-        { provider: 'https://attacker.example' },
+        { cid: 'not-a-cid' },
+        { routes: ['http://127.0.0.1:5001'] },
+        { routes: [] },
         { createdAt: now - LISTING_WINDOW_MS },
         { createdAt: now + 60001 },
         { size: 3 * 1024 * 1024 },

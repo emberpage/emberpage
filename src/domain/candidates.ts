@@ -131,19 +131,8 @@ export async function filterCandidates(
     >;
     let decoded: ArticleCopy;
     try {
+      decoded = await decodeArticle(supplied?.bytes, {expected: supplied, now});
       if (
-        typeof supplied?.blobHash !== 'string' ||
-        !/^[a-f0-9]{64}$/.test(supplied.blobHash)
-      )
-        throw new Error('Missing file hash.');
-      decoded = await decodeArticle(supplied.bytes, {
-        blobHash: supplied.blobHash,
-        now
-      });
-      if (
-        decoded.contentHash !== supplied.contentHash ||
-        decoded.urlHash !== supplied.urlHash ||
-        decoded.size !== supplied.size ||
         typeof supplied.listedAt !== 'number' ||
         !Number.isSafeInteger(supplied.listedAt) ||
         supplied.listedAt < 0 ||

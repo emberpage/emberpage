@@ -1,3 +1,5 @@
+import { SnapshotRoutes } from '../src/domain/routes.ts';
+import { isSnapshotCid } from '../src/domain/cid.ts';
 import { Schema } from "effect";
 
 const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
@@ -16,7 +18,8 @@ export const ListingSchema = Schema.Struct({
   title: Schema.NonEmptyString,
   byline: Schema.String,
   capturedAt: Count,
-  provider: Schema.String,
+  cid: Schema.String.check(Schema.makeFilter(isSnapshotCid)),
+  routes: SnapshotRoutes,
 });
 export const RatingSchema = Schema.Struct({
   id: Hash,
@@ -26,18 +29,23 @@ export const RatingSchema = Schema.Struct({
   contentHash: Hash,
   value: Schema.Literals([1, -1]),
 });
+export const RelayOutcomeSchema = Schema.Struct({
+  relay: Schema.String,
+  outcome: Schema.Literals(['success','failure']),
+  error: Schema.optionalKey(Schema.Literals(['timeout','network','canceled'])),
+});
 export const DiagnosticsSchema = Schema.Struct({
   received: Count,
   accepted: Count,
   rejected: Count,
   duplicates: Count,
+  relays: Schema.optionalKey(Schema.Array(RelayOutcomeSchema)),
   reasons: Schema.optionalKey(Schema.Record(Schema.String, Count)),
 });
 export type Listing = typeof ListingSchema.Type;
 export type Rating = typeof RatingSchema.Type;
 export type QueryDiagnostics = typeof DiagnosticsSchema.Type;
 export interface MetadataDirectory {
-  readonly lastQuery?: unknown;
   queryListings(signal?: AbortSignal): Promise<unknown>;
   queryVotes(
     targets: readonly { urlHash: string; contentHash: string }[],

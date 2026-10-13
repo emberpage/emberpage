@@ -1,8 +1,8 @@
+import { meshRoutes } from './mesh-fixture.ts';
 import { Schema } from 'effect';
 import { ListingSchema } from '../aggregator/types.ts';
-import type { Listing, Rating } from '../aggregator/types.ts';
+import type { Listing, Rating, QueryDiagnostics } from '../aggregator/types.ts';
 import { hashUrl } from '../src/domain/article.ts';
-import { PROVIDER } from '../src/directory/nostr.ts';
 export async function listing(
   now = Date.now(),
   overrides: Partial<Listing> & Record<string, unknown> = {}
@@ -20,7 +20,8 @@ export async function listing(
     byline: 'A researcher',
     capturedAt: now - 60 * 86400_000,
     createdAt: now,
-    provider: PROVIDER
+    routes: meshRoutes(),
+    cid: 'bafkreic7i2p4bhkouoidnqnh3ak6lagk3qhcef65qzdgbz735zexp4hu4m'
   });
   return { ...base, ...overrides };
 }
@@ -37,4 +38,8 @@ export function vote(
     value: 1,
     ...overrides
   };
+}
+
+export function queryResult<A>(records: readonly A[], diagnostics: Partial<QueryDiagnostics> = {}) {
+  return { records, diagnostics: { received: records.length, accepted: records.length, rejected: 0, duplicates: 0, ...diagnostics } };
 }
